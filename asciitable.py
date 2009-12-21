@@ -1,5 +1,7 @@
+import os
 import sys
 import re
+import numpy
 
 class Column(object):
     def __init__(self, name, index):
@@ -65,17 +67,46 @@ class TableHeader(object):
         return [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
 
 class Inputter(object):
+    def get_lines(self, table):
+        """Get the lines from the ``table`` input which can be:
+        * A string: either a filename or a full data table (os.linesep separated)
+        * A list of lines
+        """
+        try:
+            table + ''
+            if os.linesep not in table:
+                with open(table, 'r') as f:
+                    table = f.read()
+            return table.splitlines()
+        except TypeError:
+            try:
+                # See if table supports indexing, slicing, and iteration
+                table[0]
+                table[0:1]
+                iter(table)
+                return table
+            except TypeError:
+                raise TypeError('Input "table" must be a string (filename or data) or an iterable')
+
+    def process_lines(self, lines):
+        """Override this method if something has to be done to convert raw input lines to the
+        table rows.  E.g. account for continuation characters if a row is split into lines."""
+        return lines
+
     def __call__(self, table):
-        return table.splitlines()
+        lines = self.get_lines(table)
+        return self.process_lines(lines)
 
-def list_int(vals):
-    return [int(x) for x in vals]
-
-def list_float(vals):
-    return [float(x) for x in vals]
-
-class BaseOutputter(object):
+class Outputter(object):
     converters = dict()
+    default_converter = [lambda vals: [int(x) for x in vals],
+                         lambda vals: [float(x) for x in vals],
+                         lambda vals: vals]
+
+    def __call__(self, cols):
+        self.convert_vals(cols)
+        return dict((x.name, x) for x in cols)
+
     def convert_vals(self, cols):
         for col in cols:
             col.converters = self.converters.get(col.name, self.default_converter)[:]
@@ -88,18 +119,20 @@ class BaseOutputter(object):
                     else:
                         raise ValueError('Column failed to convert')
 
-class ListOutputter(BaseOutputter):
-    default_converter = [list_int, list_float, lambda x: x]
+class NumpyArrayOutputter(Outputter):
+    default_converter = [lambda vals: numpy.array(vals, numpy.int),
+                         lambda vals: numpy.array(vals, numpy.float),
+                         lambda vals: numpy.array(vals, numpy.str)]
 
-class NumpyArrayOutputter(BaseOutputter):
-    import numpy
-    default_converter = [numpy.int, numpy.float, numpy.str]
+    def __call__(self, cols):
+        self.convert_vals(cols)
+        return numpy.rec.fromarrays([x.data for x in cols], names=[x.name for x in cols])
 
-class AsciiTable(dict):
+class AsciiTable(object):
     header_class = TableHeader
     data_class = TableData
     inputter_class = Inputter
-    outputter_class = ListOutputter
+    outputter_class = NumpyArrayOutputter
 
     def __init__(self, table):
         self.table = table
@@ -111,12 +144,12 @@ class AsciiTable(dict):
     def read(self):
         self.lines = self.inputter(self.table)
         self.cols = self.header.get_cols(self.lines)
-        # split data lines and populate self.cols.str_vals
         self.data.get_str_vals(self.lines, self.cols)
-        self.outputter.convert_vals(self.cols)
+        return self.outputter(self.cols)
 
-        for col in self.cols:
-            self[col.name] = col
+testlines = ['col1 col2 col3',
+             '1   2 3.4',
+             '2.3 4 hi']
 
 testtable = """#
 col1 col2 col3
