@@ -44,10 +44,6 @@ class Inputter(object):
         remove blank lines."""
         return lines
 
-    def __call__(self, table):
-        lines = self.get_lines(table)
-        return self.process_lines(lines)
-
 class Splitter(object):
     """Use python csv to do the splitting"""
     autostrip = True
@@ -211,7 +207,7 @@ class Table(object):
         self.outputter = self.__class__.outputter_class()
 
     def read(self, table):
-        lines = self.inputter(table)
+        lines = self.inputter.get_lines(table)
         n_data_cols = len(self.data.get_str_vals(lines).next())
         cols = self.header.get_cols(lines, n_data_cols)
 

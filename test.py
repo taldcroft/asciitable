@@ -9,7 +9,7 @@ except ImportError:
 class TableNumpy(asciitable.Table):
     outputter_class = asciitable.NumpyOutputter
 
-class TabTable(asciitable.TableNumpy):
+class TabTable(TableNumpy):
     def __init__(self):
         super(TabTable, self).__init__()
         self.header.splitter.delimiter = '\t'
