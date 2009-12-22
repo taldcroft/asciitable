@@ -1,70 +1,18 @@
 import os
 import sys
 import re
-import numpy
+import csv
+
+try:
+    import numpy
+except ImportError:
+    pass
 
 class Column(object):
     def __init__(self, name, index):
         self.name = name
         self.index = index
         self.str_vals = []
-
-class Splitter(object):
-    delimiter = None
-    autostrip = True
-
-    def __call__(self, line):
-        vals = line.split(self.delimiter)
-        if self.autostrip:
-            vals = [x.strip() for x in vals]
-        return vals
-
-class TableData(object):
-    skip_header = 1
-    skip_footer = 0
-    comments = '#'
-    splitter = Splitter()
-    
-    def get_str_vals(self, lines, cols):
-        re_comment = re.compile(r'\s*' + self.comments)
-        data_lines = [x for x in lines if not re_comment.match(x)]
-        for line in data_lines[slice(self.skip_header, -self.skip_footer or None)]:
-            str_vals = self.splitter(line)
-            try:
-                for col in cols:
-                    col.str_vals.append(str_vals[col.index])
-            except IndexError:
-                raise ValueError('Line %d has too few columns of data' % (i+1))
-
-class TableHeader(object):
-    skip_header = 0
-    comments = '#'
-    splitter = Splitter()
-    include_names = None
-    exclude_names = None
-    names = None
-
-    def get_cols(self, lines):
-        if self.names is None:
-            n_match = 0
-            re_comment = re.compile(r'\s*' + self.comments)
-            for line in lines:
-                if not re_comment.match(line):
-                    if n_match == self.skip_header:
-                        break
-                    else:
-                        n_match += 1
-            else: # No header line matching
-                raise ValueError('No header line found')
-            self.names = self.splitter(line)
-        
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intesection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        return [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
 
 class Inputter(object):
     def get_lines(self, table):
@@ -97,15 +45,100 @@ class Inputter(object):
         lines = self.get_lines(table)
         return self.process_lines(lines)
 
+class Splitter(object):
+    # csv dialect values
+    autostrip = True
+    delimiter = ' '
+    quotechar = '"'
+    doublequote = True
+    escapechar = None
+    quoting = csv.QUOTE_MINIMAL
+
+    def __call__(self, lines):
+        if self.autostrip:
+            lines = (x.strip() for x in lines)
+        return csv.reader(lines,
+                          delimiter =self.delimiter,
+                            doublequote = self.doublequote,
+                            escapechar =self.escapechar,
+                            quotechar = self.quotechar,
+                            quoting = self.quoting,
+                            skipinitialspace = self.autostrip
+                            )
+    
+class SplitterWhiteSpace(object):
+    delimiter = ','
+    autostrip = True
+
+    def __call__(self, lines):
+        vals = line.split(self.delimiter)
+        if self.autostrip:
+            vals = [x.strip() for x in vals]
+        return vals
+
+class TableData(object):
+    skip_header = 1
+    skip_footer = 0
+    comments = '#'
+    splitter = Splitter()
+    
+    def get_str_vals(self, lines):
+        if not hasattr(self, 'data_lines'):
+            re_comment = re.compile(r'\s*' + self.comments)
+            data_lines = [x for x in lines if not re_comment.match(x)]
+            self.data_lines = data_lines[slice(self.skip_header, -self.skip_footer or None)]
+        return self.splitter(self.data_lines)
+##         for line in self.data_lines:
+##             yield self.splitter(line)
+
+    def set_cols(self, cols, str_vals):
+        try:
+            for col in cols:
+                col.str_vals.append(str_vals[col.index])
+        except IndexError:
+            raise ValueError('Line %d has too few columns of data' % (i+1))
+
+class TableHeader(object):
+    auto_format = '%d'
+    header_line = 0
+    comments = '#'
+    splitter = Splitter()
+    include_names = None
+    exclude_names = None
+    names = None
+
+    def get_cols(self, lines, n_data_cols):
+        if self.header_line is None:
+            # No header line so auto-generate names from n_data_cols
+            self.names = [self.auto_format.format(i) for i in range(n_data_cols)]
+
+        elif self.names is None:
+            # No column names supplied so read them from header line in table.
+            n_match = 0
+            re_comment = re.compile(r'\s*' + self.comments)
+            for line in lines:
+                if not re_comment.match(line):
+                    if n_match == self.header_line:
+                        break
+                    else:
+                        n_match += 1
+            else: # No header line matching
+                raise ValueError('No header line found in table')
+            self.names = self.splitter([line]).next()
+        
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intesection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        return [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+
 class Outputter(object):
     converters = dict()
     default_converter = [lambda vals: [int(x) for x in vals],
                          lambda vals: [float(x) for x in vals],
                          lambda vals: vals]
-
-    def __call__(self, cols):
-        self.convert_vals(cols)
-        return dict((x.name, x) for x in cols)
 
     def convert_vals(self, cols):
         for col in cols:
@@ -119,7 +152,11 @@ class Outputter(object):
                     else:
                         raise ValueError('Column failed to convert')
 
-class NumpyArrayOutputter(Outputter):
+    def __call__(self, cols):
+        self.convert_vals(cols)
+        return dict((x.name, x) for x in cols)
+
+class OutputterNumpy(Outputter):
     default_converter = [lambda vals: numpy.array(vals, numpy.int),
                          lambda vals: numpy.array(vals, numpy.float),
                          lambda vals: numpy.array(vals, numpy.str)]
@@ -128,11 +165,11 @@ class NumpyArrayOutputter(Outputter):
         self.convert_vals(cols)
         return numpy.rec.fromarrays([x.data for x in cols], names=[x.name for x in cols])
 
-class AsciiTable(object):
+class Table(object):
     header_class = TableHeader
     data_class = TableData
     inputter_class = Inputter
-    outputter_class = NumpyArrayOutputter
+    outputter_class = Outputter
 
     def __init__(self, table):
         self.table = table
@@ -142,18 +179,25 @@ class AsciiTable(object):
         self.outputter = self.__class__.outputter_class()
 
     def read(self):
-        self.lines = self.inputter(self.table)
-        self.cols = self.header.get_cols(self.lines)
-        self.data.get_str_vals(self.lines, self.cols)
-        return self.outputter(self.cols)
+        lines = self.inputter(self.table)
+        n_data_cols = len(self.data.get_str_vals(lines).next())
+        cols = self.header.get_cols(lines, n_data_cols)
 
-testlines = ['col1 col2 col3',
-             '1   2 3.4',
-             '2.3 4 hi']
+        set_cols = self.data.set_cols   # reduce object lookup within inner loop
+        for str_vals in self.data.get_str_vals(lines):
+            set_cols(cols, str_vals)
+        return self.outputter(cols)
+
+class TableNumpy(Table):
+    outputter_class = OutputterNumpy
+
+testlines = ['     col1 col2 col3',
+             '   1   2 3.4  ',
+             '2.3 4   "hi there"  ']
 
 testtable = """#
 col1 col2 col3
-1   2 3.4
+1   " 2 " 3.4
 2.3 4 hi
 """
         
