@@ -79,29 +79,26 @@ class SplitterWhiteSpace(object):
 class TableData(object):
     skip_header = 1
     skip_footer = 0
-    comments = '#'
+    comment = '#'
     splitter = Splitter()
     
     def get_str_vals(self, lines):
         if not hasattr(self, 'data_lines'):
-            re_comment = re.compile(r'\s*' + self.comments)
+            re_comment = re.compile(r'\s*' + self.comment)
             data_lines = [x for x in lines if not re_comment.match(x)]
             self.data_lines = data_lines[slice(self.skip_header, -self.skip_footer or None)]
         return self.splitter(self.data_lines)
-##         for line in self.data_lines:
-##             yield self.splitter(line)
 
-    def set_cols(self, cols, str_vals):
-        try:
-            for col in cols:
-                col.str_vals.append(str_vals[col.index])
-        except IndexError:
-            raise ValueError('Line %d has too few columns of data' % (i+1))
+    def set_cols(self, cols, str_vals, n_data_cols):
+        if len(cols) != n_data_cols:
+            raise ValueError('Table columns inconsistent with first data line')
+        for col in cols:
+            col.str_vals.append(str_vals[col.index])
 
 class TableHeader(object):
     auto_format = '%d'
     header_line = 0
-    comments = '#'
+    comment = '#'
     splitter = Splitter()
     include_names = None
     exclude_names = None
@@ -115,7 +112,7 @@ class TableHeader(object):
         elif self.names is None:
             # No column names supplied so read them from header line in table.
             n_match = 0
-            re_comment = re.compile(r'\s*' + self.comments)
+            re_comment = re.compile(r'\s*' + self.comment)
             for line in lines:
                 if not re_comment.match(line):
                     if n_match == self.header_line:
@@ -171,36 +168,25 @@ class Table(object):
     inputter_class = Inputter
     outputter_class = Outputter
 
-    def __init__(self, table):
-        self.table = table
+    def __init__(self):
         self.header = self.__class__.header_class()
         self.data = self.__class__.data_class()
         self.inputter = self.__class__.inputter_class()
         self.outputter = self.__class__.outputter_class()
 
-    def read(self):
-        lines = self.inputter(self.table)
+    def read(self, table):
+        lines = self.inputter(table)
         n_data_cols = len(self.data.get_str_vals(lines).next())
         cols = self.header.get_cols(lines, n_data_cols)
 
         set_cols = self.data.set_cols   # reduce object lookup within inner loop
         for str_vals in self.data.get_str_vals(lines):
-            set_cols(cols, str_vals)
+            set_cols(cols, str_vals, n_data_cols)
         return self.outputter(cols)
 
 class TableNumpy(Table):
     outputter_class = OutputterNumpy
 
-testlines = ['     col1 col2 col3',
-             '   1   2 3.4  ',
-             '2.3 4   "hi there"  ']
-
-testtable = """#
-col1 col2 col3
-1   " 2 " 3.4
-2.3 4 hi
-"""
-        
 a = """
 fname : file or str [Inputter]
 
