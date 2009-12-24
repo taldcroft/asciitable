@@ -1,111 +1,156 @@
+import re
+import glob
 from nose.tools import *
 
 import asciitable
-try:
-    import numpy
-except ImportError:
-    pass
+import numpy  # full tests require numpy but asciitable can be run without it
 
-class TableNumpy(asciitable.Table):
-    outputter_class = asciitable.NumpyOutputter
-
-class TabTable(TableNumpy):
-    def __init__(self):
-        super(TabTable, self).__init__()
-        self.header.splitter.delimiter = '\t'
-        self.data.splitter.delimiter = '\t'
-
-class RdbTable(TabTable):
-    def __init__(self):
-        super(RdbTable, self).__init__()
-        self.data.skip_header = 2
-
-def read_rdb_table(table):
-    reader = asciitable.TableNumpy()
-    reader.header.splitter.delimiter = '\t'
-    reader.data.splitter.delimiter = '\t'
-    reader.data.skip_header = 2
-    return reader.read(table)
-
-def read_table(table,
-               delimiter=None,
-               header_start=None,
-               data_start=None,
-               data_end=None,
-               converters=None,
-               numpy=True,
-               Reader=asciitable.Table):
-    reader = Reader()
-
-    if numpy:
-        reader.outputter = asciitable.NumpyOutputter()
-    if delimiter is not None:
-        reader.header.splitter.delimiter = delimiter
-        reader.data.splitter.delimiter = delimiter
-    if data_start is not None:
-        reader.data.start_line = data_start
-    if data_end is not None:
-        reader.data.end_line = data_end
-    if header_start is not None:
-        reader.header.start_line = header_start
-    if converters is not None:
-        reader.outputter.converters = converters
-
-    return reader.read(table)
-
-cols = {}
-cols["t/short.tab"]      = ('agasc_id', 'n_noids', 'n_obs')
-cols["t/simple5.txt"]    = ('3102  |  0.32     |     4167 |  4085   |  Q1250+568-A  |  9',)
-cols["t/short.rdb"]      = ('agasc_id', 'n_noids', 'n_obs')
-cols["t/apostrophe.tab"] = ('agasc_id', 'n_noids', 'n_obs')
-cols["t/apostrophe.rdb"] = ('agasc_id', 'n_noids', 'n_obs')
-cols["t/simple3.txt"]    = ('obsid', 'redshift', 'X', 'Y', 'object', 'rad')
-cols["t/simple4.txt"]    = ('col1', 'col2', 'col3', 'col4', 'col5', 'col6')
-cols["t/test4.dat"]      = ('zabs1.nh', 'p1.gamma', 'p1.ampl', 'statname', 'statval')
-cols["t/simple.txt"]     = ('test 1a', 'test2', 'test3', 'test4')
-cols["t/simple2.txt"]    = ('obsid', 'redshift', 'X', 'Y', 'object', 'rad')
-cols["t/nls1_stackinfo.dbout"] = ('', 'objID', 'osrcid', 'xsrcid', 'SpecObjID', 'ra', 'dec',
+# Set up information about the columns, number of rows, and reader params to
+# read a bunch of test files and verify columns and number of rows
+cols = {
+    "t/short.tab"      : ('agasc_id', 'n_noids', 'n_obs'),
+    "t/short.rdb"      : ('agasc_id', 'n_noids', 'n_obs'),
+    "t/apostrophe.tab" : ('agasc_id', 'n_noids', 'n_obs'),
+    "t/apostrophe.rdb" : ('agasc_id', 'n_noids', 'n_obs'),
+    "t/simple3.txt"    : ('obsid', 'redshift', 'X', 'Y', 'object', 'rad'),
+    "t/simple4.txt"    : ('col1', 'col2', 'col3', 'col4', 'col5', 'col6'),
+    "t/test4.dat"      : ('zabs1.nh', 'p1.gamma', 'p1.ampl', 'statname', 'statval'),
+    "t/simple.txt"     : ('test 1a', 'test2', 'test3', 'test4'),
+    "t/simple2.txt"    : ('obsid', 'redshift', 'X', 'Y', 'object', 'rad'),
+    "t/nls1_stackinfo.dbout" : ('', 'objID', 'osrcid', 'xsrcid', 'SpecObjID', 'ra', 'dec',
                                   'obsid', 'ccdid', 'z', 'modelMag_i',
                                   'modelMagErr_i', 'modelMag_r', 'modelMagErr_r', 'expo',
-                                  'theta', 'rad_ecf_39', 'detlim90', 'fBlim90')
+                                  'theta', 'rad_ecf_39', 'detlim90', 'fBlim90'),
+    }
+nrows = {
+    "t/short.tab" : 7,
+    "t/short.rdb" : 7,
+    "t/apostrophe.tab" : 3,
+    "t/apostrophe.rdb" : 2,
+    "t/simple3.txt" : 2,
+    "t/simple4.txt" : 3,
+    "t/test4.dat" : 1172,
+    "t/simple.txt" : 2,
+    "t/simple2.txt" : 3,
+    "t/nls1_stackinfo.dbout" : 58,
+    }
 
-nrows = {}
-nrows["t/short.tab"] = 7
-nrows["t/simple5.txt"] = 2
-nrows["t/short.rdb"] = 7
-nrows["t/apostrophe.tab"] = 3
-nrows["t/apostrophe.rdb"] = 2
-nrows["t/simple3.txt"] = 2
-nrows["t/simple4.txt"] = 3
-nrows["t/test4.dat"] = 1172
-nrows["t/simple.txt"] = 2
-nrows["t/simple2.txt"] = 3
-nrows["t/nls1_stackinfo.dbout"] = 58
+opt = {
+    't/short.rdb' : {'Reader': asciitable.RdbReader},
+    't/short.tab' : {'Reader': asciitable.TabReader},
+    't/apostrophe.rdb' : {'Reader': asciitable.RdbReader},
+    't/apostrophe.tab' : {'Reader': asciitable.TabReader},
+    't/nls1_stackinfo.dbout' : {'data_start': 2, 'delimiter': '|'},
+    't/simple.txt' : {'quotechar': "'"},
+    't/simple2.txt' : {'delimiter': '|'},
+    't/simple3.txt' : {'delimiter': '|'},
+    't/simple4.txt' : {'Reader': asciitable.NoHeaderReader, 'delimiter': '|'},
+    }    
 
-opt = {}
-opt['t/short.rdb'] = {'headertype': 'rdb'}
-opt['t/apostrophe.rdb'] = {'headertype': 'rdb'}
-opt['t/simple4.txt'] = {'headertype': 'none'}
-opt["t/nls1_stackinfo.dbout"] = {'headerrow': 1, 'datastart': 3}
+def test_read_all_files_numpy():
+    for f in glob.glob('t/*'):
+        if f in cols:
+            print 'Reading', f
+            options = opt.get(f, {})
+            table = asciitable.read(f, **options)
+            assert_equal(table.dtype.names, cols[f])
+            assert_equal(len(table), nrows[f])
 
+def test_read_all_files_list():
+    for f in glob.glob('t/*'):
+        if f in cols:
+            print 'Reading', f
+            options = opt.get(f, {})
+            table = asciitable.read(f, numpy=False, **options)
+            assert_equal(set(table.keys()), set(cols[f]))
+            for colval in table.values():
+                assert_equal(len(colval.data), nrows[f])
 
-## def test10_read_all_files():
-##     from glob import glob
-##     for f in glob('t/*'):
-##         if f in cols:
-##             parseopt = (f in opt and opt[f]) or {}
-##             data_array = read_table(f, **parseopt)
-##             assert_equal(data_array.dtype.names, cols[f])
-##             assert_equal(len(data_array), nrows[f])
+@raises(asciitable.InconsistentTableError)
+def test_wrong_quote():
+    table = asciitable.read('t/simple.txt')
 
-## def test20_missing_file():
-##     assertRaises(IOError,
-##                       read_table,
-##                       'file_doesnt_exist')
+@raises(asciitable.InconsistentTableError)
+def test_extra_data_col():
+    table = asciitable.read('t/bad.txt')
 
-## def test40_ascii_colnames():
-##     colnames = ('c1','c2','c3', 'c4', 'c5', 'c6')
-##     data = read_ascii_table('t/simple3.txt',
-##                              colnames=colnames)
-##     assert_equal(data.dtype.names, colnames)
+@raises(asciitable.InconsistentTableError)
+def test_extra_data_col():
+    table = asciitable.read('t/simple5.txt', delimiter='|')
 
+@raises(IOError)
+def test_missing_file():
+    table = asciitable.read('does_not_exist')
+
+def test_set_names():
+    names = ('c1','c2','c3', 'c4', 'c5', 'c6')
+    include_names = ('c1', 'c3')
+    exclude_names = ('c4', 'c5', 'c6')
+    data = asciitable.read('t/simple3.txt', names=names, delimiter='|')
+    assert_equal(data.dtype.names, names)
+
+def test_set_include_names():
+    names = ('c1','c2','c3', 'c4', 'c5', 'c6')
+    include_names = ('c1', 'c3')
+    data = asciitable.read('t/simple3.txt', names=names, include_names=include_names, delimiter='|')
+    assert_equal(data.dtype.names, include_names)
+
+def test_set_exclude_names():
+    exclude_names = ('Y', 'object')
+    data = asciitable.read('t/simple3.txt', exclude_names=exclude_names, delimiter='|')
+    assert_equal(data.dtype.names, ('obsid', 'redshift', 'X', 'rad'))
+
+def test_custom_process_line():
+    def process_line(line):
+        line_out = re.sub(r'^\|\s*', '', line.strip())
+        return line_out
+    reader = asciitable.get_reader(data_start=2, delimiter='|')
+    reader.header.splitter.process_line = process_line
+    reader.data.splitter.process_line = process_line
+    data = reader.read('t/nls1_stackinfo.dbout')
+    assert_equal(data.dtype.names, cols["t/nls1_stackinfo.dbout"][1:])
+
+def test_custom_splitters():
+    reader = asciitable.get_reader()
+    reader.header.splitter = asciitable.BaseSplitter()
+    reader.data.splitter = asciitable.BaseSplitter()
+    f = 't/test4.dat'
+    data = reader.read(f)
+    assert_equal(data.dtype.names, cols[f])
+    assert_equal(len(data), nrows[f])
+    assert_almost_equal(data[2]['zabs1.nh'], 0.0839710433091)
+    assert_almost_equal(data[2]['p1.gamma'], 1.25997502704)
+    assert_almost_equal(data[2]['p1.ampl'], 0.000696444029148)
+    assert_equal(data[2]['statname'], 'chi2modvar')
+    assert_almost_equal(data[2]['statval'], 497.56468441)
+    
+def test_start_end():
+    data = asciitable.read('t/test5.dat', header_start=1, data_start=3, data_end=-5)
+    assert_equal(len(data), 13)
+    assert_equal(data[0]['statname'], 'chi2xspecvar')
+    assert_equal(data[-1]['statname'], 'chi2gehrels')
+
+def test_set_converters():
+    converters = {'zabs1.nh': [asciitable.convert_numpy('int32'),
+                               asciitable.convert_numpy('float32')],
+                  'p1.gamma': asciitable.convert_numpy('str')
+                  }
+    data = asciitable.read('t/test4.dat', converters=converters)
+    assert_equal(str(data['zabs1.nh'].dtype), 'float32')
+    assert_equal(str(data['p1.gamma'].dtype), '|S13')
+    assert_equal(data['p1.gamma'][0], '1.26764544642')
+    
+def test_from_string():
+    f = 't/simple.txt'
+    table = open(f).read()
+    data = asciitable.read(table, **opt[f])
+    assert_equal(data.dtype.names, cols[f])
+    assert_equal(len(data), nrows[f])
+    
+def test_from_lines():
+    f = 't/simple.txt'
+    table = open(f).readlines()
+    data = asciitable.read(table, **opt[f])
+    assert_equal(data.dtype.names, cols[f])
+    assert_equal(len(data), nrows[f])
+    
