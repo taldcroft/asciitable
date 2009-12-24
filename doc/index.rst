@@ -26,7 +26,7 @@ attributes are actually functions that make it easy to handle special cases.
 
 Download
 ---------------------------
-The :mod:`asciitable` package is available in the `downloads`_ directory as
+The :mod:`asciitable` package is available in the `<http://cxc.harvard.edu/contrib/asciitable/downloads>`_ directory as
 ``asciitable-<version>.tar.gz``.  
 
 Examples
