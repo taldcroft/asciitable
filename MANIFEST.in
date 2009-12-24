@@ -1,0 +1,4 @@
+include t/*
+include test.py
+include doc/*.rst
+

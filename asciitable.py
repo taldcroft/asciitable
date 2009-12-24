@@ -1,3 +1,31 @@
+"""
+An extensible ASCII table reader.
+
+At the top level ``asciitable`` looks like many other ASCII table readers since
+it provides a default ``read()`` function with a long list of parameters to accommodate
+the many variations possible in commonly encountered ASCII table formats.  But unlike
+other monolithic table reader implementations, ``asciitable`` is based on a modular
+and extensible class structure.  If a new format is encountered that cannot be handled
+by the existing hooks in the ``read()`` function then underlying class methods can be 
+tweaked as needed.  
+
+The key elements in ``asciitable`` are:
+
+* **Column**: Internal storage of column properties and data.
+* **Inputter**: Get the lines from the table input.
+* **Splitter**: Split the lines into string column values.
+* **Header**: Initialize output columns based on the table header or user input.
+* **Data**: Populate column data from the table.
+* **Outputter**: Convert column data to the specified output format, e.g. numpy structured array.
+
+Each of these elements is an inheritable class with attributes that control the
+corresponding functionality.  In this way the large number of tweakable
+parameters is modularized into managable groups.  Where it makes sense these
+attributes are actually functions that make it easy to handle special cases.
+
+:Copyright: Smithsonian Astrophysical Observatory (2009)
+:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+"""
 import os
 import sys
 import re
@@ -316,6 +344,10 @@ class ListOutputter(BaseOutputter):
         return dict((x.name, x) for x in cols)
 
 def convert_numpy(numpy_type):
+    """Return a function that converts a list into a numpy array of the given
+    ``numpy_type``.  This type must be a string corresponding to a numpy type,
+    e.g. 'int64' or 'str' or 'float32'.
+    """
     def converter(vals):
         return numpy.array(vals, getattr(numpy, numpy_type))
     return converter
@@ -366,19 +398,12 @@ class BaseReader(object):
     ``header``, ``data``, ``inputter``, and ``outputter`` attributes.  Each
     of these is an object of the corresponding class.
 
-    An alternate use is to sub-class Reader to override the default ``header_class``,
-    ``data_class``, ``inputter_class``, and ``outputter_class`` class attributes.
     """
-    header_class = BaseHeader
-    data_class = BaseData
-    inputter_class = BaseInputter
-    outputter_class = BaseOutputter
-
     def __init__(self):
-        self.header = self.__class__.header_class()
-        self.data = self.__class__.data_class()
-        self.inputter = self.__class__.inputter_class()
-        self.outputter = self.__class__.outputter_class()
+        self.header = BaseHeader()
+        self.data = BaseData()
+        self.inputter = BaseInputter()
+        self.outputter = BaseOutputter()
 
     def read(self, table):
         """Read the ``table`` and return the results in a format determined by
