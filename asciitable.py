@@ -33,8 +33,9 @@ import csv
 
 try:
     import numpy
+    has_numpy = True
 except ImportError:
-    pass
+    has_numpy = False
 
 class InconsistentTableError(Exception):
     pass
@@ -59,8 +60,7 @@ class BaseInputter(object):
         try:
             table + ''
             if os.linesep not in table:
-                with open(table, 'r') as f:
-                    table = f.read()
+                table = open(table, 'r').read()
             lines = table.splitlines()
         except TypeError:
             try:
@@ -285,6 +285,26 @@ class BaseData(object):
                     col.str_vals[i] = fill_values[str_val]
                     col.mask[i] = True
 
+
+
+class _DictLikeNumpy(dict):
+    """Provide minimal compatibility with numpy rec array API for BaseOutputter
+    object::
+      
+      table = asciitable.read('mytable.dat', numpy=False)
+      table.field('x')    # access column 'x'
+      table.dtype.names   # get column names in order
+    """
+    class Dtype(object):
+        pass
+    dtype = Dtype()
+    def field(self, colname):
+        return self[colname].data
+
+    def __len__(self):
+        return len(self.values()[0].data)
+
+        
 class BaseOutputter(object):
     """Output table as a dict of column objects keyed on column name.  The
     table data are stored as plain python lists within the column objects.
@@ -296,6 +316,8 @@ class BaseOutputter(object):
       table = reader.read('mytable.dat')
       table['x'].data # data for column 'x'
       table['y'].mask # mask list for column 'y'
+      table.field('x')    # access column 'x'
+      table.dtype.names   # get column names in order
     """
     converters = {}
     default_converter = [lambda vals: [int(x) for x in vals],
@@ -304,7 +326,9 @@ class BaseOutputter(object):
 
     def __call__(self, cols):
         self._convert_vals(cols)
-        return dict((x.name, x) for x in cols)
+        table = _DictLikeNumpy((x.name, x) for x in cols)
+        table.dtype.names = tuple(x.name for x in cols)
+        return table
 
     def _convert_vals(self, cols):
         for col in cols:
@@ -322,26 +346,6 @@ class BaseOutputter(object):
                     col.converters.pop(0)
                 except IndexError:
                     raise ValueError('Column {0} failed to convert'.format(col.name))
-
-class ListOutputter(BaseOutputter):
-    """Output table as a dict of column objects keyed on column name.  The
-    table data are stored as plain python lists within the column objects.
-
-    Example::
-    
-      reader = asciitable.Table()
-      reader.data.fill_values = {'': '-999'} # replace empty fields with -999
-      table = reader.read('mytable.dat')
-      table['x'].data # data for column 'x'
-      table['y'].mask # mask list for column 'y'
-    """
-    default_converter = [lambda vals: [int(x) for x in vals],
-                         lambda vals: [float(x) for x in vals],
-                         lambda vals: vals]
-
-    def __call__(self, cols):
-        self._convert_vals(cols)
-        return dict((x.name, x) for x in cols)
 
 def convert_numpy(numpy_type):
     """Return a function that converts a list into a numpy array of the given
@@ -502,7 +506,7 @@ def get_reader(Reader=None, Outputter=None, numpy=True, **kwargs):
         Reader = BasicReader
     reader = Reader()
 
-    if numpy:
+    if has_numpy and numpy:
         reader.outputter = NumpyOutputter()
 
     if Outputter is not None:
@@ -551,7 +555,7 @@ def read(table, numpy=True, **kwargs):
     table in a numpy record array.  Otherwise return the table as a
     dictionary of column objects using plain python lists to hold the data.
 
-    :param numpy: use the NumpyOutputter class else use ListOutputter (default=True)
+    :param numpy: use the NumpyOutputter class else use BaseOutputter (default=True)
     :param Reader: Reader class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
@@ -576,11 +580,11 @@ def read(table, numpy=True, **kwargs):
 
     # Provide a simple way to choose between the two common outputters.  If an Outputter is
     # supplied in kwargs that will take precedence.
-    if numpy:
-        Outputter = NumpyOutputter
+    new_kwargs = {}
+    if has_numpy and numpy:
+        new_kwargs['Outputter'] = NumpyOutputter
     else:
-        Outputter = ListOutputter
-    new_kwargs = {'Outputter': Outputter}
+        new_kwargs['Outputter'] = BaseOutputter
     new_kwargs.update(kwargs)
         
     reader = get_reader(**new_kwargs)

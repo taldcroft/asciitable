@@ -3,7 +3,12 @@ import glob
 from nose.tools import *
 
 import asciitable
-import numpy  # full tests require numpy but asciitable can be run without it
+try:
+    import numpy
+    has_numpy = True
+except ImportError:
+    has_numpy = False
+    
 
 # Set up information about the columns, number of rows, and reader params to
 # read a bunch of test files and verify columns and number of rows
@@ -118,19 +123,21 @@ def test_custom_splitters():
     data = reader.read(f)
     assert_equal(data.dtype.names, cols[f])
     assert_equal(len(data), nrows[f])
-    assert_almost_equal(data[2]['zabs1.nh'], 0.0839710433091)
-    assert_almost_equal(data[2]['p1.gamma'], 1.25997502704)
-    assert_almost_equal(data[2]['p1.ampl'], 0.000696444029148)
-    assert_equal(data[2]['statname'], 'chi2modvar')
-    assert_almost_equal(data[2]['statval'], 497.56468441)
+    assert_almost_equal(data.field('zabs1.nh')[2], 0.0839710433091)
+    assert_almost_equal(data.field('p1.gamma')[2], 1.25997502704)
+    assert_almost_equal(data.field('p1.ampl')[2], 0.000696444029148)
+    assert_equal(data.field('statname')[2], 'chi2modvar')
+    assert_almost_equal(data.field('statval')[2], 497.56468441)
     
 def test_start_end():
     data = asciitable.read('t/test5.dat', header_start=1, data_start=3, data_end=-5)
     assert_equal(len(data), 13)
-    assert_equal(data[0]['statname'], 'chi2xspecvar')
-    assert_equal(data[-1]['statname'], 'chi2gehrels')
+    assert_equal(data.field('statname')[0], 'chi2xspecvar')
+    assert_equal(data.field('statname')[-1], 'chi2gehrels')
 
 def test_set_converters():
+    if not has_numpy:
+        return
     converters = {'zabs1.nh': [asciitable.convert_numpy('int32'),
                                asciitable.convert_numpy('float32')],
                   'p1.gamma': asciitable.convert_numpy('str')
