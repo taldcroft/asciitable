@@ -24,6 +24,10 @@ corresponding functionality.  In this way the large number of tweakable
 parameters is modularized into managable groups.  Where it makes sense these
 attributes are actually functions that make it easy to handle special cases.
 
+Requirements
+---------------
+* ``asciitable`` has been tested with Python 2.4, 2.5 and 2.6.  It might work with other versions.
+
 Download
 ---------------------------
 The :mod:`asciitable` package is available in the `<http://cxc.harvard.edu/contrib/asciitable/downloads>`_ directory as
