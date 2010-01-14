@@ -60,7 +60,8 @@ providing the in source distribution.::
 
       return reader.read(table)
 
-  # Define custom readers by class inheritance 
+  # Define custom readers by class inheritance.
+  # Note: TabReader and RdbReader are already included in asciitable for convenience.
   class TabReader(BasicReader):
       def __init__(self):
           BasicReader.__init__(self)
@@ -74,6 +75,20 @@ providing the in source distribution.::
       def __init__(self):
           TabReader.__init__(self)
           self.data.start_line = 2
+
+  # Create a custom splitter.process_val function.  The default normally just
+  # strips whitespace.  In addition have it replace empty fields with -999.
+  def process_val(x):
+      """Custom splitter process_val function: Remove whitespace at the beginning
+      or end of value and substitute -999 for any blank entries."""
+      x = x.strip()
+      if x == '':
+          x = '-999'
+      return x
+
+  # Create an RDB reader and override the splitter.process_val function
+  rdb_reader = asciitable.get_reader(Reader=asciitable.RdbReader)
+  rdb_reader.data.splitter.process_val = process_val
 
 
 More complicated examples are provided in the nose testing file ``test.py`` in the source
