@@ -263,18 +263,19 @@ class BaseData(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
-    def get_str_vals(self, lines):
 
-        if not hasattr(self, 'data_lines'):
-            if self.comment:
-                re_comment = re.compile(self.comment)
-                data_lines = [x for x in lines if not re_comment.match(x)]
-            else:
-                data_lines = lines
-            start_line = _get_line_index(self.start_line, data_lines)
-            end_line = _get_line_index(self.end_line, data_lines)
+    def get_data_lines(self, lines):
+        if self.comment:
+            re_comment = re.compile(self.comment)
+            data_lines = [x for x in lines if not re_comment.match(x)]
+        else:
+            data_lines = lines
+        start_line = _get_line_index(self.start_line, data_lines)
+        end_line = _get_line_index(self.end_line, data_lines)
 
-            self.data_lines = data_lines[slice(start_line, self.end_line)]
+        self.data_lines = data_lines[slice(start_line, self.end_line)]
+
+    def get_str_vals(self):
         return self.splitter(self.data_lines)
 
     def set_masks(self, cols):
@@ -425,10 +426,11 @@ class BaseReader(object):
         :returns: output table
         """
         lines = self.inputter.get_lines(table)
-        n_data_cols = len(self.data.get_str_vals(lines).next())
+        self.data.get_data_lines(lines)
+        n_data_cols = len(self.data.get_str_vals().next())
         cols = self.header.get_cols(lines, n_data_cols)
 
-        for str_vals in self.data.get_str_vals(lines):
+        for str_vals in self.data.get_str_vals():
             if len(str_vals) != n_data_cols:
                 raise InconsistentTableError('Table columns inconsistent with first data line')
             for col in cols:
