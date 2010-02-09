@@ -26,6 +26,7 @@ cols = {
                                   'obsid', 'ccdid', 'z', 'modelMag_i',
                                   'modelMagErr_i', 'modelMag_r', 'modelMagErr_r', 'expo',
                                   'theta', 'rad_ecf_39', 'detlim90', 'fBlim90'),
+    "t/space_delim_blank_lines.txt": ('obsid', 'offset', 'x', 'y', 'name', 'oaa'),
     }
 nrows = {
     "t/short.tab" : 7,
@@ -38,6 +39,7 @@ nrows = {
     "t/simple.txt" : 2,
     "t/simple2.txt" : 3,
     "t/nls1_stackinfo.dbout" : 58,
+    't/space_delim_blank_lines.txt': 3,
     }
 
 opt = {
@@ -50,6 +52,7 @@ opt = {
     't/simple2.txt' : {'delimiter': '|'},
     't/simple3.txt' : {'delimiter': '|'},
     't/simple4.txt' : {'Reader': asciitable.NoHeaderReader, 'delimiter': '|'},
+    't/space_delim_blank_lines.txt': {},
     }    
 
 def test_read_all_files_numpy():
@@ -104,6 +107,17 @@ def test_set_exclude_names():
     exclude_names = ('Y', 'object')
     data = asciitable.read('t/simple3.txt', exclude_names=exclude_names, delimiter='|')
     assert_equal(data.dtype.names, ('obsid', 'redshift', 'X', 'rad'))
+
+def test_custom_process_lines():
+    def process_lines(lines):
+        bars_at_ends = re.compile(r'^\| | \|$', re.VERBOSE)
+        striplines = (x.strip() for x in lines)
+        return [bars_at_ends.sub('', x) for x in striplines if len(x) > 0]
+    reader = asciitable.get_reader(delimiter='|')
+    reader.inputter.process_lines = process_lines
+    data = reader.read('t/bars_at_ends.txt')
+    assert_equal(data.dtype.names, ('obsid', 'redshift', 'X', 'Y', 'object', 'rad'))
+    assert_equal(len(data), 3)
 
 def test_custom_process_line():
     def process_line(line):

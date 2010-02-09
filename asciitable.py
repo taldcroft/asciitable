@@ -74,14 +74,15 @@ class BaseInputter(object):
 
         return self.process_lines(lines)
 
-    def process_lines(self, lines):
-        """This is a placeholder for a method to process lines for subsequent use.
+    @staticmethod
+    def process_lines(lines):
+        """Process lines for subsequent use.  In the default case throw out any lines
+        that are only whitespace.
 
-        Override this method if something has to be done to convert raw input
-        lines to the table rows.  For example one could account for
-        continuation characters if a row is split into lines or remove blank
-        lines."""
-        return lines
+        Override this static method if something more has to be done to convert
+        raw input lines to the table rows.  For example one could account for
+        continuation characters if a row is split into lines."""
+        return [x for x in lines if len(x.strip()) > 0]
 
 class BaseSplitter(object):
     """Minimal splitter that just uses python's split method to do the work.
