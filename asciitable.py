@@ -1,27 +1,4 @@
-"""
-An extensible ASCII table reader.
-
-At the top level ``asciitable`` looks like many other ASCII table readers since
-it provides a default ``read()`` function with a long list of parameters to accommodate
-the many variations possible in commonly encountered ASCII table formats.  But unlike
-other monolithic table reader implementations, ``asciitable`` is based on a modular
-and extensible class structure.  If a new format is encountered that cannot be handled
-by the existing hooks in the ``read()`` function then underlying class methods can be 
-tweaked as needed.  
-
-The key elements in ``asciitable`` are:
-
-* **Column**: Internal storage of column properties and data.
-* **Inputter**: Get the lines from the table input.
-* **Splitter**: Split the lines into string column values.
-* **Header**: Initialize output columns based on the table header or user input.
-* **Data**: Populate column data from the table.
-* **Outputter**: Convert column data to the specified output format, e.g. numpy structured array.
-
-Each of these elements is an inheritable class with attributes that control the
-corresponding functionality.  In this way the large number of tweakable
-parameters is modularized into managable groups.  Where it makes sense these
-attributes are actually functions that make it easy to handle special cases.
+""" An extensible ASCII table reader.
 
 :Copyright: Smithsonian Astrophysical Observatory (2009)
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
@@ -214,6 +191,16 @@ class BaseHeader(object):
         self.splitter = self.__class__.splitter_class()
 
     def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+
+        Based on the previously set Header attributes find or create the column names.
+        Sets ``self.col``s with the list of Columns.  This list only includes the actual
+        requested columns after filtering by the include_names and exclude_names
+        attributes.  See ``self.names`` for the full list.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
         # Get the data values from the first line of table data to determine n_data_cols
         first_data_vals = self.data.get_str_vals().next()
         n_data_cols = len(first_data_vals)
@@ -252,7 +239,8 @@ class BaseHeader(object):
         if self.exclude_names is not None:
             names.difference_update(self.exclude_names)
             
-        return [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        return self.cols
 
 class BaseData(object):
     """Table data reader

@@ -24,9 +24,13 @@ corresponding functionality.  In this way the large number of tweakable
 parameters is modularized into managable groups.  Where it makes sense these
 attributes are actually functions that make it easy to handle special cases.
 
+:Copyright: Smithsonian Astrophysical Observatory (2009)
+:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+
 Requirements
 ---------------
-* ``asciitable`` has been tested with Python 2.4, 2.5 and 2.6.  It might work with other versions.
+* :mod:`asciitable` has been tested with Python 2.4, 2.5 and 2.6.  It might work with other versions.
+* Though not required `NumPy <http://numpy.scipy.org/>`_ is highly recommended.  Version 1.3.0 has been tested.
 
 Download
 ---------------------------
@@ -94,10 +98,13 @@ providing the in source distribution.::
 More complicated examples are provided in the nose testing file ``test.py`` in the source
 distribution.
 
+asciitable API
+==============
+
 .. automodule:: asciitable
 
 Functions
-----------
+--------------
 
 .. autofunction:: read
 
@@ -106,7 +113,7 @@ Functions
 .. autofunction:: convert_numpy
 
 Classes
---------
+--------------
 .. autoclass:: BaseReader
    :show-inheritance:
    :members:
@@ -180,12 +187,6 @@ Classes
    :undoc-members:
 
 .. autoclass:: BaseOutputter
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: ListOutputter
    :show-inheritance:
    :members:
    :inherited-members:

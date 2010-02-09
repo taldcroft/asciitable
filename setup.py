@@ -1,7 +1,7 @@
 from distutils.core import setup
 setup(name='asciitable',
       url='http://cxc.harvard.edu/contrib/asciitable',
-      version='0.1.2',
+      version='0.1.3',
       description='Extensible ASCII table reader',
       author='Tom Aldcroft',
       author_email='aldcroft@head.cfa.harvard.edu',
