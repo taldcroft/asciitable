@@ -213,9 +213,12 @@ class BaseHeader(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
-    def get_cols(self, lines, n_data_cols):
-        start_line = _get_line_index(self.start_line, lines)
+    def get_cols(self, lines):
+        # Get the data values from the first line of table data to determine n_data_cols
+        first_data_vals = self.data.get_str_vals().next()
+        n_data_cols = len(first_data_vals)
 
+        start_line = _get_line_index(self.start_line, lines)
         if start_line is None:
             # No header line so auto-generate names from n_data_cols
             self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
@@ -236,7 +239,12 @@ class BaseHeader(object):
             self.names = self.splitter([line]).next()
         
         if len(self.names) != n_data_cols:
-            raise InconsistentTableError('Header columns inconsistent with first data line')
+            errmsg = ('Number of header columns (%d) inconsistent with '
+                      'data columns (%d) in first line\n'
+                      'Header values: %s\n'
+                      'Data values: %s' % (len(self.names), len(first_data_vals),
+                                           self.names, first_data_vals))
+            raise InconsistentTableError(errmsg)
 
         names = set(self.names)
         if self.include_names is not None:
@@ -264,7 +272,6 @@ class BaseData(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
-
     def get_data_lines(self, lines):
         if self.comment:
             re_comment = re.compile(self.comment)
@@ -286,7 +293,6 @@ class BaseData(object):
                 for i, str_val in ((i, x) for i, x in enumerate(col.str_vals) if x in fill_values):
                     col.str_vals[i] = fill_values[str_val]
                     col.mask[i] = True
-
 
 
 class _DictLikeNumpy(dict):
@@ -426,14 +432,27 @@ class BaseReader(object):
         :param table: table input
         :returns: output table
         """
+        # Data and Header instances benefit from a little cross-coupling.  Header may need to
+        # know about number of data columns for auto-column name generation and Data may
+        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
+        self.data.header = self.header
+        self.header.data = self.data
+
         lines = self.inputter.get_lines(table)
         self.data.get_data_lines(lines)
-        n_data_cols = len(self.data.get_str_vals().next())
-        cols = self.header.get_cols(lines, n_data_cols)
+        cols = self.header.get_cols(lines)
 
-        for str_vals in self.data.get_str_vals():
+        for i, str_vals in enumerate(self.data.get_str_vals()):
+            if i == 0:
+                n_data_cols = len(str_vals)
             if len(str_vals) != n_data_cols:
-                raise InconsistentTableError('Table columns inconsistent with first data line')
+                errmsg = ('Number of header columns (%d) inconsistent with '
+                          'data columns (%d) at data line %d\n'
+                          'Header values: %s\n'
+                          'Data values: %s' % (len(cols), len(str_vals), i,
+                                               [x.name for x in cols], str_vals))
+                raise InconsistentTableError(errmsg)
+
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
 

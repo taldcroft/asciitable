@@ -83,7 +83,7 @@ def test_extra_data_col():
     table = asciitable.read('t/bad.txt')
 
 @raises(asciitable.InconsistentTableError)
-def test_extra_data_col():
+def test_extra_data_col2():
     table = asciitable.read('t/simple5.txt', delimiter='|')
 
 @raises(IOError)
