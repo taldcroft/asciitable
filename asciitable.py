@@ -208,7 +208,8 @@ class BaseHeader(object):
         start_line = _get_line_index(self.start_line, lines)
         if start_line is None:
             # No header line so auto-generate names from n_data_cols
-            self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
+            if self.names is None:
+                self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
 
         elif self.names is None:
             # No column names supplied so read them from header line in table.
