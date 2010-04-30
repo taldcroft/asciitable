@@ -27,6 +27,8 @@ cols = {
                                   'modelMagErr_i', 'modelMag_r', 'modelMagErr_r', 'expo',
                                   'theta', 'rad_ecf_39', 'detlim90', 'fBlim90'),
     "t/space_delim_blank_lines.txt": ('obsid', 'offset', 'x', 'y', 'name', 'oaa'),
+    "t/daophot.dat" : ('ID', 'XCENTER', 'YCENTER', 'MAG', 'MERR', 'MSKY', 'NITER',
+                       'SHARPNESS', 'CHI', 'PIER', 'PERROR'),
     }
 nrows = {
     "t/short.tab" : 7,
@@ -40,6 +42,7 @@ nrows = {
     "t/simple2.txt" : 3,
     "t/nls1_stackinfo.dbout" : 58,
     't/space_delim_blank_lines.txt': 3,
+    "t/daophot.dat" : 2,
     }
 
 opt = {
@@ -53,6 +56,7 @@ opt = {
     't/simple3.txt' : {'delimiter': '|'},
     't/simple4.txt' : {'Reader': asciitable.NoHeaderReader, 'delimiter': '|'},
     't/space_delim_blank_lines.txt': {},
+    "t/daophot.dat" : {'Reader': asciitable.DaophotReader},
     }    
 
 def test_read_all_files_numpy():
@@ -89,6 +93,13 @@ def test_extra_data_col2():
 @raises(IOError)
 def test_missing_file():
     table = asciitable.read('does_not_exist')
+
+def test_continue_process_lines():
+    # Simple test of a continuation reader
+    reader = asciitable.get_reader(Reader=asciitable.NoHeaderReader)
+    reader.inputter.process_lines = asciitable.continue_process_lines()
+    data = reader.read('t/continuation.dat')
+    assert_equal(data['col4'][1], 'next')
 
 def test_set_names():
     names = ('c1','c2','c3', 'c4', 'c5', 'c6')

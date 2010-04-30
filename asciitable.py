@@ -61,6 +61,24 @@ class BaseInputter(object):
         continuation characters if a row is split into lines."""
         return [x for x in lines if len(x.strip()) > 0]
 
+def continue_process_lines(continue_char = '\\'):
+    def process_lines(lines):
+        striplines = (x.strip() for x in lines)
+        lines = [x for x in striplines if len(x) > 0]
+
+        parts = []
+        outlines = []
+        for line in lines:
+            if line.endswith(continue_char):
+                parts.append(line.rstrip(continue_char))
+            else:
+                parts.append(line)
+                outlines.append(''.join(parts))
+                parts = []
+
+        return outlines
+    return process_lines
+
 class BaseSplitter(object):
     """Minimal splitter that just uses python's split method to do the work.
 
@@ -159,6 +177,7 @@ class TextSimpleSplitter(BaseSplitter):
     """
     @staticmethod
     def preprocess(x):
+        print 'hey'
         x = re.sub(r'\s*#', '', x)
         return x.strip()
 
@@ -217,7 +236,8 @@ class BaseHeader(object):
             if self.comment:
                 re_comment = re.compile(self.comment)
             for line in lines:
-                if self.comment and not re_comment.match(line):
+                # If no comment is defined or the line is not a comment then process
+                if not self.comment or not re_comment.match(line):
                     if n_match == start_line:
                         break
                     else:
@@ -226,6 +246,49 @@ class BaseHeader(object):
                 raise ValueError('No header line found in table')
             self.names = self.splitter([line]).next()
         
+        if len(self.names) != n_data_cols:
+            errmsg = ('Number of header columns (%d) inconsistent with '
+                      'data columns (%d) in first line\n'
+                      'Header values: %s\n'
+                      'Data values: %s' % (len(self.names), len(first_data_vals),
+                                           self.names, first_data_vals))
+            raise InconsistentTableError(errmsg)
+
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        return self.cols
+
+class DaophotHeader(BaseHeader):
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+
+        The DAOphot header is specialized so that we just copy the entire BaseHeader
+        get_cols routine and modify as needed.  Don't bother with making it extensible.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
+        # Get the data values from the first line of table data to determine n_data_cols
+        first_data_vals = self.data.get_str_vals().next()
+        n_data_cols = len(first_data_vals)
+
+        # No column names supplied so read them from header line in table.
+        self.names = []
+        re_name_def = re.compile(r'#N([^#]+)#')
+        for line in lines:
+            if not line.startswith('#'):
+                break                   # End of header lines
+            else:
+                match = re_name_def.search(line)
+                if match:
+                    self.names.extend(match.group(1).split())
+        
+        ##  This code is all the same as the BaseHeader get_cols()
         if len(self.names) != n_data_cols:
             errmsg = ('Number of header columns (%d) inconsistent with '
                       'data columns (%d) in first line\n'
@@ -485,6 +548,16 @@ class RdbReader(TabReader):
     def __init__(self):
         TabReader.__init__(self)
         self.data.start_line = 2
+
+class DaophotReader(BaseReader):
+    """Derived reader class that reads a DAOphot file."""
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header = DaophotHeader()
+        self.inputter.process_lines = continue_process_lines()
+        self.data.splitter.delimiter = ' '
+        self.data.start_line = 0
+        self.data.comment = r'\s*#'
 
 extra_reader_pars = ('Reader', 'Outputter', 
                      'delimiter', 'comment', 'quotechar', 'header_start',
