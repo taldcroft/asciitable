@@ -1,3 +1,7 @@
+0.2.1
+=====
+Add support for reading CDS format files (header + data in one file)
+
 0.2.0
 =====
 Updates to the way lines are processed and comments handled for support of new formats.
