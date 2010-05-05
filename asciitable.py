@@ -7,6 +7,7 @@ import os
 import sys
 import re
 import csv
+import itertools
 
 try:
     import numpy
@@ -223,7 +224,6 @@ class BaseHeader(object):
             names.difference_update(self.exclude_names)
             
         self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
-        return self.cols
 
     def process_lines(self, lines):
         """Generator to yield non-comment lines"""
@@ -267,7 +267,10 @@ class BaseData(object):
         start_line = _get_line_index(self.start_line, data_lines)
         end_line = _get_line_index(self.end_line, data_lines)
 
-        self.data_lines = data_lines[slice(start_line, self.end_line)]
+        if start_line is not None or end_line is not None:
+            self.data_lines = data_lines[slice(start_line, self.end_line)]
+        else:  # Don't copy entire data lines unless necessary
+            self.data_lines = data_lines
 
     def get_str_vals(self):
         return self.splitter(self.data_lines)
@@ -426,7 +429,9 @@ class BaseReader(object):
 
         lines = self.inputter.get_lines(table)
         self.data.get_data_lines(lines)
-        cols = self.header.get_cols(lines)
+        self.header.get_cols(lines)
+        cols = self.header.cols
+        self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
             if i == 0:
@@ -737,5 +742,105 @@ class DaophotHeader(BaseHeader):
             names.difference_update(self.exclude_names)
             
         self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
-        return self.cols
+
+class FixedWidthSplitter(BaseSplitter):
+    """Split line based on fixed start and end positions for each ``col`` in
+    ``self.cols``.
+
+    This class requires that the Header class will have defined ``col.start``
+    and ``col.end`` for each column.  The reference to the ``header.cols`` gets
+    put in the splitter object by the base Reader.read() function just in time
+    for splitting data lines by a ``data`` object.  This class won't work for
+    splitting a fixed-width header but generally the header will be used to
+    determine the column start and end positions.
+
+    Note that the ``start`` and ``end`` positions are defined in the pythonic
+    style so line[start:end] is the desired substring for a column.  This splitter
+    class does not have a hook for ``process_lines`` since that is generally not
+    useful for fixed-width input.
+    """
+    def __call__(self, lines):
+        for line in lines:
+            vals = [line[x.start:x.end] for x in self.cols]
+            if self.process_val:
+                yield [self.process_val(x) for x in vals]
+            else:
+                yield vals
+
+
+class CdsHeader(BaseHeader):
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines`` for a CDS
+        header.  See http://vizier.u-strasbg.fr/doc/catstd/catstd-3.1.htx.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
+        for i_col_def, line in enumerate(lines):
+            if re.match(r'Byte-by-byte Description', line, re.IGNORECASE):
+                break
+
+        re_col_def = re.compile(r"""\s*
+                                    (?P<start> \d+ \s* -)? \s+
+                                    (?P<end>   \d+)        \s+
+                                    (?P<format> [\w.]+)     \s+
+                                    (?P<units> \S+)        \s+
+                                    (?P<name>  \S+)        \s+
+                                    (?P<descr> \S.+)""",
+                                re.VERBOSE)
+
+        cols = []
+        for i, line in enumerate(itertools.islice(lines, i_col_def+4, None)):
+            if line.startswith('------') or line.startswith('======='):
+                break
+            match = re_col_def.match(line)
+            if match:
+                col = Column(name=match.group('name'), index=i)
+                col.start = int(re.sub(r'[-\s]', '', match.group('start') or match.group('end'))) - 1
+                col.end = int(match.group('end'))
+                col.units = match.group('units')
+                col.descr = match.group('descr')
+                cols.append(col)
+            else:  # could be a continuation of the previous col's description
+                if cols:
+                    cols[-1].descr += line.strip()
+                else:
+                    raise ValueError('Line "%s" not parsable as CDS header' % line)
+
+        self.names = [x.name for x in cols]
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [x for x in cols if x.name in names]
+
+        # Re-index the cols because the FixedWidthSplitter does NOT return the ignored
+        # cols (as is in the case for typical delimiter-based splitters)
+        for i, col in enumerate(self.cols):
+            col.index = i
+            
+
+class CdsData(BaseData):
+    """CDS table data reader
+    """
+    splitter_class = FixedWidthSplitter
+    
+    def process_lines(self, lines):
+        """Skip over CDS header by finding the last section delimiter"""
+        i_sections = [i for (i, x) in enumerate(lines)
+                      if x.startswith('------') or x.startswith('=======')]
+        return lines[i_sections[-1]+1 : ]
+
+
+class CdsReader(BaseReader):
+    """Read a CDS format file.
+
+    See http://vizier.u-strasbg.fr/doc/catstd/catstd-3.1.htx or the test file
+    t/cds.dat"""
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header = CdsHeader()
+        self.data = CdsData()
 

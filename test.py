@@ -31,6 +31,7 @@ cols = {
                        'SHARPNESS', 'CHI', 'PIER', 'PERROR'),
     "t/commented_header.dat": ('a', 'b', 'c'),
     "t/continuation.dat": ('col1', 'col2', 'col3', 'col4', 'col5'),
+    "t/cds.dat": ('Index', 'RAh', 'RAm', 'RAs', 'DE-', 'DEd', 'DEm', 'DEs', 'Match', 'Class', 'AK', 'Fit'),
     }
 nrows = {
     "t/short.tab" : 7,
@@ -47,6 +48,7 @@ nrows = {
     "t/daophot.dat" : 2,
     "t/commented_header.dat": 2,
     "t/continuation.dat": 2,
+    "t/cds.dat": 1,
     }
 
 opt = {
@@ -64,6 +66,7 @@ opt = {
     "t/commented_header.dat": {'Reader': asciitable.CommentedHeaderReader},
     "t/continuation.dat": {'Reader': asciitable.NoHeaderReader,
                            'Inputter': asciitable.ContinuationLinesInputter},
+    "t/cds.dat": {'Reader': asciitable.CdsReader},
     }    
 
 def test_read_all_files_numpy():

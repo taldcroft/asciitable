@@ -16,6 +16,7 @@ Byte-by-byte Description of file: datafile3.txt
    5-  6 I2     h      RAh    Hour of Right Ascension (J2000) 
    8-  9 I2     min    RAm    Minute of Right Ascension (J2000) 
   11- 15 F5.2   s      RAs    Second of Right Ascension (J2000) 
+                              - continuation of description
       17 A1     ---    DE-    Sign of the Declination (J2000)
   18- 19 I2     deg    DEd    Degree of Declination (J2000) 
   21- 22 I2     arcmin DEm    Arcminute of Declination (J2000) 
