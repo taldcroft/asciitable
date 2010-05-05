@@ -1,0 +1,16 @@
+0.2.0
+=====
+Updates to the way lines are processed and comments handled for support of new formats.
+
+- Splitter process_line and process_val and Inputter process_line are now object methods.
+  This allows for settable parameters that control processing (e.g. continuation_char).
+
+- Add BaseHeader and BaseData process_line methods that do comment and blank-line 
+  filtering as needed.  Splitter process_line should no longer be used for this purpose.
+
+- Add support for formats:
+  - CommentedHeader (column def line begins with comment char)
+  - DAOphot
+  - Files with continuation lines via ContinuationLinesInputter class
+
+- Add 'Inputter' as an option to get_reader() and read()

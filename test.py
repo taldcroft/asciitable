@@ -29,6 +29,8 @@ cols = {
     "t/space_delim_blank_lines.txt": ('obsid', 'offset', 'x', 'y', 'name', 'oaa'),
     "t/daophot.dat" : ('ID', 'XCENTER', 'YCENTER', 'MAG', 'MERR', 'MSKY', 'NITER',
                        'SHARPNESS', 'CHI', 'PIER', 'PERROR'),
+    "t/commented_header.dat": ('a', 'b', 'c'),
+    "t/continuation.dat": ('col1', 'col2', 'col3', 'col4', 'col5'),
     }
 nrows = {
     "t/short.tab" : 7,
@@ -43,6 +45,8 @@ nrows = {
     "t/nls1_stackinfo.dbout" : 58,
     't/space_delim_blank_lines.txt': 3,
     "t/daophot.dat" : 2,
+    "t/commented_header.dat": 2,
+    "t/continuation.dat": 2,
     }
 
 opt = {
@@ -57,6 +61,9 @@ opt = {
     't/simple4.txt' : {'Reader': asciitable.NoHeaderReader, 'delimiter': '|'},
     't/space_delim_blank_lines.txt': {},
     "t/daophot.dat" : {'Reader': asciitable.DaophotReader},
+    "t/commented_header.dat": {'Reader': asciitable.CommentedHeaderReader},
+    "t/continuation.dat": {'Reader': asciitable.NoHeaderReader,
+                           'Inputter': asciitable.ContinuationLinesInputter},
     }    
 
 def test_read_all_files_numpy():
@@ -93,13 +100,6 @@ def test_extra_data_col2():
 @raises(IOError)
 def test_missing_file():
     table = asciitable.read('does_not_exist')
-
-def test_continue_process_lines():
-    # Simple test of a continuation reader
-    reader = asciitable.get_reader(Reader=asciitable.NoHeaderReader)
-    reader.inputter.process_lines = asciitable.continue_process_lines()
-    data = reader.read('t/continuation.dat')
-    assert_equal(data['col4'][1], 'next')
 
 def test_set_names():
     names = ('c1','c2','c3', 'c4', 'c5', 'c6')

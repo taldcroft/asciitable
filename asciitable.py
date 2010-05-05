@@ -51,33 +51,14 @@ class BaseInputter(object):
 
         return self.process_lines(lines)
 
-    @staticmethod
-    def process_lines(lines):
-        """Process lines for subsequent use.  In the default case throw out any lines
-        that are only whitespace.
+    def process_lines(self, lines):
+        """Process lines for subsequent use.  In the default case do nothing.
 
-        Override this static method if something more has to be done to convert
+        Override this method if something more has to be done to convert
         raw input lines to the table rows.  For example one could account for
         continuation characters if a row is split into lines."""
-        return [x for x in lines if len(x.strip()) > 0]
-
-def continue_process_lines(continue_char = '\\'):
-    def process_lines(lines):
-        striplines = (x.strip() for x in lines)
-        lines = [x for x in striplines if len(x) > 0]
-
-        parts = []
-        outlines = []
-        for line in lines:
-            if line.endswith(continue_char):
-                parts.append(line.rstrip(continue_char))
-            else:
-                parts.append(line)
-                outlines.append(''.join(parts))
-                parts = []
-
-        return outlines
-    return process_lines
+        return lines
+        # [x for x in lines if len(x.strip()) > 0]
 
 class BaseSplitter(object):
     """Minimal splitter that just uses python's split method to do the work.
@@ -86,23 +67,22 @@ class BaseSplitter(object):
     self.preprocess if needed and the formulation of __call__ as a generator
     that returns a list of the split line values at each iteration.
 
-    There are two static methods that are defined, first ``process_line()`` to do
-    pre-processing on each input line before splitting and ``process_val()`` to do post-processing
-    on each split string value.  By default these apply the string ``strip()`` function.
-    These can be set to a number function via the instance attribute or be disabled entirely, e.g.::
+    There are two methods that are intended to be overwritten, first
+    ``process_line()`` to do pre-processing on each input line before splitting
+    and ``process_val()`` to do post-processing on each split string value.  By
+    default these apply the string ``strip()`` function.  These can be set to a
+    number function via the instance attribute or be disabled entirely, e.g.::
 
       reader.header.splitter.process_val = lambda x: x.lstrip()
       reader.data.splitter.process_val = None
       
     """
-    @staticmethod
-    def process_line(x):
+    def process_line(self, x):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
         whitespace-delimited files to prevent spurious columns at the beginning or end."""
         return x.strip()
 
-    @staticmethod
-    def process_val(x):
+    def process_val(self, x):
         """Remove whitespace at the beginning or end of value."""
         return x.strip()
 
@@ -169,18 +149,6 @@ class DefaultSplitter(BaseSplitter):
                 yield vals
             
         
-    
-class TextSimpleSplitter(BaseSplitter):
-    """Read CIAO dmascii text/simple header.  Override preprocess static method
-    to handle this format which has column names in the first table line and
-    where the line starts with '#'.
-    """
-    @staticmethod
-    def preprocess(x):
-        print 'hey'
-        x = re.sub(r'\s*#', '', x)
-        return x.strip()
-
 def _get_line_index(line_or_func, lines):
     if hasattr(line_or_func, '__call__'):
         return line_or_func(lines)
@@ -188,7 +156,7 @@ def _get_line_index(line_or_func, lines):
         return line_or_func
 
 class BaseHeader(object):
-    """Table header reader
+    """Base table header reader
 
     :param auto_format: format string for auto-generating column names
     :param start_line: None, int, or a function of ``lines`` that returns None or int
@@ -232,18 +200,12 @@ class BaseHeader(object):
 
         elif self.names is None:
             # No column names supplied so read them from header line in table.
-            n_match = 0
-            if self.comment:
-                re_comment = re.compile(self.comment)
-            for line in lines:
-                # If no comment is defined or the line is not a comment then process
-                if not self.comment or not re_comment.match(line):
-                    if n_match == start_line:
-                        break
-                    else:
-                        n_match += 1
+            for i, line in enumerate(self.process_lines(lines)):
+                if i == start_line:
+                    break
             else: # No header line matching
                 raise ValueError('No header line found in table')
+
             self.names = self.splitter([line]).next()
         
         if len(self.names) != n_data_cols:
@@ -263,48 +225,15 @@ class BaseHeader(object):
         self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
         return self.cols
 
-class DaophotHeader(BaseHeader):
-    def get_cols(self, lines):
-        """Initialize the header Column objects from the table ``lines``.
-
-        The DAOphot header is specialized so that we just copy the entire BaseHeader
-        get_cols routine and modify as needed.  Don't bother with making it extensible.
-
-        :param lines: list of table lines
-        :returns: list of table Columns
-        """
-        # Get the data values from the first line of table data to determine n_data_cols
-        first_data_vals = self.data.get_str_vals().next()
-        n_data_cols = len(first_data_vals)
-
-        # No column names supplied so read them from header line in table.
-        self.names = []
-        re_name_def = re.compile(r'#N([^#]+)#')
+    def process_lines(self, lines):
+        """Generator to yield non-comment lines"""
+        if self.comment:
+            re_comment = re.compile(self.comment)
+        # Yield non-comment lines
         for line in lines:
-            if not line.startswith('#'):
-                break                   # End of header lines
-            else:
-                match = re_name_def.search(line)
-                if match:
-                    self.names.extend(match.group(1).split())
-        
-        ##  This code is all the same as the BaseHeader get_cols()
-        if len(self.names) != n_data_cols:
-            errmsg = ('Number of header columns (%d) inconsistent with '
-                      'data columns (%d) in first line\n'
-                      'Header values: %s\n'
-                      'Data values: %s' % (len(self.names), len(first_data_vals),
-                                           self.names, first_data_vals))
-            raise InconsistentTableError(errmsg)
-
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
-        return self.cols
+            if line and not self.comment or not re_comment.match(line):
+                yield line
+                
 
 class BaseData(object):
     """Table data reader
@@ -324,12 +253,17 @@ class BaseData(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
-    def get_data_lines(self, lines):
+    def process_lines(self, lines):
+        """Strip out comment lines from list of ``lines``"""
+        nonblank_lines = (x for x in lines if x.strip())
         if self.comment:
             re_comment = re.compile(self.comment)
-            data_lines = [x for x in lines if not re_comment.match(x)]
+            return [x for x in nonblank_lines if not re_comment.match(x)]
         else:
-            data_lines = lines
+            return [x for x in nonblank_lines]
+
+    def get_data_lines(self, lines):
+        data_lines = self.process_lines(lines)
         start_line = _get_line_index(self.start_line, data_lines)
         end_line = _get_line_index(self.end_line, data_lines)
 
@@ -516,6 +450,15 @@ class BasicReader(BaseReader):
     """Derived reader class that reads a space-delimited table with a single
     header line at the top followed by data lines to the end of the table.
     Lines beginning with # as the first non-whitespace character are comments.
+    Example::
+    
+      # Column definition is the first uncommented line
+      # Default delimiter is the space character.
+      apples oranges pears
+
+      # Data starts after the header column definition, blank lines ignored
+      1 2 3
+      4 5 6
     """
     def __init__(self):
         BaseReader.__init__(self)
@@ -526,50 +469,18 @@ class BasicReader(BaseReader):
         self.header.comment = r'\s*#'
         self.data.comment = r'\s*#'
 
-class NoHeaderReader(BasicReader):
-    """Same as BasicReader but without a header.  Columns are autonamed using
-    header.auto_format which defaults to "col%d".
-    """
-    def __init__(self):
-        BasicReader.__init__(self)
-        self.header.start_line = None
-        self.data.start_line = 0
-
-class TabReader(BasicReader):
-    def __init__(self):
-        BasicReader.__init__(self)
-        self.header.splitter.delimiter = '\t'
-        self.data.splitter.delimiter = '\t'
-        # Don't strip line whitespace since that includes tabs
-        self.header.splitter.process_line = None  
-        self.data.splitter.process_line = None
-
-class RdbReader(TabReader):
-    def __init__(self):
-        TabReader.__init__(self)
-        self.data.start_line = 2
-
-class DaophotReader(BaseReader):
-    """Derived reader class that reads a DAOphot file."""
-    def __init__(self):
-        BaseReader.__init__(self)
-        self.header = DaophotHeader()
-        self.inputter.process_lines = continue_process_lines()
-        self.data.splitter.delimiter = ' '
-        self.data.start_line = 0
-        self.data.comment = r'\s*#'
-
-extra_reader_pars = ('Reader', 'Outputter', 
+extra_reader_pars = ('Reader', 'Inputter', 'Outputter', 
                      'delimiter', 'comment', 'quotechar', 'header_start',
                      'data_start', 'data_end', 'converters',
                      'data_Splitter', 'header_Splitter',
                      'default_masked', 'auto_masked',
                      'names', 'include_names', 'exclude_names')
 
-def get_reader(Reader=None, Outputter=None, numpy=True, **kwargs):
+def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs):
     """Initialize a table reader allowing for common customizations.
 
     :param Reader: Reader class
+    :param Inputter: Inputter class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
     :param comment: regular expression defining a comment line in table
@@ -589,6 +500,9 @@ def get_reader(Reader=None, Outputter=None, numpy=True, **kwargs):
     if Reader is None:
         Reader = BasicReader
     reader = Reader()
+
+    if Inputter is not None:
+        reader.inputter = Inputter()
 
     if has_numpy and numpy:
         reader.outputter = NumpyOutputter()
@@ -641,6 +555,7 @@ def read(table, numpy=True, **kwargs):
 
     :param numpy: use the NumpyOutputter class else use BaseOutputter (default=True)
     :param Reader: Reader class
+    :param Inputter: Inputter class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
     :param comment: regular expression defining a comment line in table
@@ -673,3 +588,154 @@ def read(table, numpy=True, **kwargs):
         
     reader = get_reader(**new_kwargs)
     return reader.read(table)
+
+############################################################################################################
+############################################################################################################
+##
+##  Custom extensions
+##
+############################################################################################################
+############################################################################################################
+
+class ContinuationLinesInputter(BaseInputter):
+    """Inputter where lines ending in the ``continuation_char`` are joined
+    with the subsequent line."""
+
+    continuation_char = '\\'
+
+    def process_lines(self, lines):
+        striplines = (x.strip() for x in lines)
+        lines = [x for x in striplines if len(x) > 0]
+
+        parts = []
+        outlines = []
+        for line in lines:
+            if line.endswith(self.continuation_char):
+                parts.append(line.rstrip(self.continuation_char))
+            else:
+                parts.append(line)
+                outlines.append(''.join(parts))
+                parts = []
+
+        return outlines
+
+
+class NoHeaderReader(BasicReader):
+    """Same as BasicReader but without a header.  Columns are autonamed using
+    header.auto_format which defaults to "col%d".
+    """
+    def __init__(self):
+        BasicReader.__init__(self)
+        self.header.start_line = None
+        self.data.start_line = 0
+
+class CommentedHeader(BaseHeader):
+    """Header class for which the column definition line starts with the
+    comment character.  
+    """
+    def process_lines(self, lines):
+        """Return only lines that start with the comment regexp.  For these
+        lines strip out the matching characters."""
+        re_comment = re.compile(self.comment)
+        for line in lines:
+            match = re_comment.match(line)
+            if match:
+                yield line[match.end():]
+
+class CommentedHeaderReader(BaseReader):
+    """Read a file where the column names are given in a line that begins with the
+    header comment character, e.g.::
+
+      # col1 col2 col3
+      #  Comment...
+      1 2 3
+      4 5 6
+    """
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header = CommentedHeader()
+        self.header.splitter.delimiter = ' '
+        self.data.splitter.delimiter = ' '
+        self.header.start_line = 0
+        self.data.start_line = 0
+        self.header.comment = r'\s*#'
+        self.data.comment = r'\s*#'
+
+class TabReader(BasicReader):
+    def __init__(self):
+        BasicReader.__init__(self)
+        self.header.splitter.delimiter = '\t'
+        self.data.splitter.delimiter = '\t'
+        # Don't strip line whitespace since that includes tabs
+        self.header.splitter.process_line = None  
+        self.data.splitter.process_line = None
+
+class RdbReader(TabReader):
+    def __init__(self):
+        TabReader.__init__(self)
+        self.data.start_line = 2
+
+class DaophotReader(BaseReader):
+    """Derived reader class that reads a DAOphot file."""
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header = DaophotHeader()
+        self.inputter = ContinuationLinesInputter()
+        self.data.splitter.delimiter = ' '
+        self.data.start_line = 0
+        self.data.comment = r'\s*#'
+
+class DaophotHeader(BaseHeader):
+    """Read the header from a file produced by the IRAF DAOphot routine.  This looks like::
+
+         #K MERGERAD   = INDEF                   scaleunit  %-23.7g  #
+         #N ID    XCENTER   YCENTER   MAG         MERR          MSKY           NITER    \
+         #U ##    pixels    pixels    magnitudes  magnitudes    counts         ##       \
+         #F %-9d  %-10.3f   %-10.3f   %-12.3f     %-14.3f       %-15.7g        %-6d     #
+         #N         SHARPNESS   CHI         PIER  PERROR                                \
+         #U         ##          ##          ##    perrors                               \
+         #F         %-23.3f     %-12.3f     %-6d  %-13s                                 #
+    """
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines`` for a DAOphot
+        header.
+
+        The DAOphot header is specialized so that we just copy the entire BaseHeader
+        get_cols routine and modify as needed.  Don't bother with making it extensible.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
+        # Get the data values from the first line of table data to determine n_data_cols
+        first_data_vals = self.data.get_str_vals().next()
+        n_data_cols = len(first_data_vals)
+
+        # No column names supplied so read them from header line in table.
+        self.names = []
+        re_name_def = re.compile(r'#N([^#]+)#')
+        for line in lines:
+            if not line.startswith('#'):
+                break                   # End of header lines
+            else:
+                match = re_name_def.search(line)
+                if match:
+                    self.names.extend(match.group(1).split())
+        
+        ##  This code is all the same as the BaseHeader get_cols()
+        if len(self.names) != n_data_cols:
+            errmsg = ('Number of header columns (%d) inconsistent with '
+                      'data columns (%d) in first line\n'
+                      'Header values: %s\n'
+                      'Data values: %s' % (len(self.names), len(first_data_vals),
+                                           self.names, first_data_vals))
+            raise InconsistentTableError(errmsg)
+
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        return self.cols
+
