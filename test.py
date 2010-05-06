@@ -32,7 +32,8 @@ cols = {
     "t/commented_header.dat": ('a', 'b', 'c'),
     "t/continuation.dat": ('col1', 'col2', 'col3', 'col4', 'col5'),
     "t/cds.dat": ('Index', 'RAh', 'RAm', 'RAs', 'DE-', 'DEd', 'DEm', 'DEs', 'Match', 'Class', 'AK', 'Fit'),
-    }
+    "t/ipac.dat": ('ra', 'dec', 'sai', 'v2', 'sptype'),
+   }
 nrows = {
     "t/short.tab" : 7,
     "t/short.rdb" : 7,
@@ -49,6 +50,7 @@ nrows = {
     "t/commented_header.dat": 2,
     "t/continuation.dat": 2,
     "t/cds.dat": 1,
+    "t/ipac.dat": 2,
     }
 
 opt = {
@@ -67,6 +69,7 @@ opt = {
     "t/continuation.dat": {'Reader': asciitable.NoHeaderReader,
                            'Inputter': asciitable.ContinuationLinesInputter},
     "t/cds.dat": {'Reader': asciitable.CdsReader},
+    "t/ipac.dat": {'Reader': asciitable.IpacReader},
     }    
 
 def test_read_all_files_numpy():
@@ -188,4 +191,9 @@ def test_from_lines():
     data = asciitable.read(table, **opt[f])
     assert_equal(data.dtype.names, cols[f])
     assert_equal(len(data), nrows[f])
+    
+def test_comment_lines():
+    table = asciitable.get_reader(Reader=asciitable.RdbReader)
+    data = table.read('t/apostrophe.rdb')
+    assert_equal(table.comment_lines, ['# first comment', '  # second comment'])
     

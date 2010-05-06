@@ -18,20 +18,31 @@ except ImportError:
 class InconsistentTableError(Exception):
     pass
 
+class Keyword(object):
+    """Table keyword"""
+    def __init__(self, name, value, units=None, comment=None):
+        self.name = name
+        self.value = value
+        self.units = units
+        self.comment = comment
+
 class Column(object):
+    """Table column"""
     def __init__(self, name, index):
         self.name = name
         self.index = index
         self.str_vals = []
 
 class BaseInputter(object):
+    """Get the lines from the table input and return a list of lines.  The input table can be one of:
+
+    * File name
+    * String (newline separated) with all header and data lines (must have at least 2 lines)
+    * List of strings
+    """
     def get_lines(self, table):
-        """Get the lines from the ``table`` input which can be one of:
-
-        * File name
-        * String (newline separated) with all header and data lines (must have at least 2 lines)
-        * List of strings
-
+        """Get the lines from the ``table`` input.
+        
         :param table: table input
         :returns: list of lines
         """
@@ -54,29 +65,34 @@ class BaseInputter(object):
 
     def process_lines(self, lines):
         """Process lines for subsequent use.  In the default case do nothing.
+        This routine is not generally intended for removing comment lines or
+        stripping whitespace.  These are done (if needed) in the header and
+        data line processing.
 
-        Override this method if something more has to be done to convert
-        raw input lines to the table rows.  For example one could account for
-        continuation characters if a row is split into lines."""
+        Override this method if something more has to be done to convert raw
+        input lines to the table rows.  For example the
+        ContinuationLinesInputter derived class accounts for continuation
+        characters if a row is split into lines."""
         return lines
-        # [x for x in lines if len(x.strip()) > 0]
 
 class BaseSplitter(object):
-    """Minimal splitter that just uses python's split method to do the work.
+    """Base splitter that uses python's split method to do the work.
 
-    This does not handle quoted values.  Key features are the call to
-    self.preprocess if needed and the formulation of __call__ as a generator
-    that returns a list of the split line values at each iteration.
+    This does not handle quoted values.  A key feature is the formulation of
+    __call__ as a generator that returns a list of the split line values at
+    each iteration.
 
-    There are two methods that are intended to be overwritten, first
+    There are two methods that are intended to be overridden, first
     ``process_line()`` to do pre-processing on each input line before splitting
     and ``process_val()`` to do post-processing on each split string value.  By
-    default these apply the string ``strip()`` function.  These can be set to a
-    number function via the instance attribute or be disabled entirely, e.g.::
+    default these apply the string ``strip()`` function.  These can be set to
+    another function via the instance attribute or be disabled entirely, for
+    example::
 
       reader.header.splitter.process_val = lambda x: x.lstrip()
       reader.data.splitter.process_val = None
       
+    :param delimiter: one-character string used to separate fields 
     """
     def process_line(self, x):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
@@ -162,7 +178,7 @@ class BaseHeader(object):
     :param auto_format: format string for auto-generating column names
     :param start_line: None, int, or a function of ``lines`` that returns None or int
     :param comment: regular expression for comment lines
-    :param splitter: Splitter object for splitting data lines into columns
+    :param splitter_class: Splitter class for splitting data lines into columns
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
@@ -182,7 +198,7 @@ class BaseHeader(object):
         """Initialize the header Column objects from the table ``lines``.
 
         Based on the previously set Header attributes find or create the column names.
-        Sets ``self.col``s with the list of Columns.  This list only includes the actual
+        Sets ``self.cols`` with the list of Columns.  This list only includes the actual
         requested columns after filtering by the include_names and exclude_names
         attributes.  See ``self.names`` for the full list.
 
@@ -233,28 +249,30 @@ class BaseHeader(object):
         for line in lines:
             if line and not self.comment or not re_comment.match(line):
                 yield line
-                
+
 
 class BaseData(object):
-    """Table data reader
+    """Base table data reader.
 
     :param start_line: None, int, or a function of ``lines`` that returns None or int
     :param end_line: None, int, or a function of ``lines`` that returns None or int
     :param comment: Regular expression for comment lines
-    :param splitter: Splitter object for splitting data lines into columns
-    :param fill_values: Dict of (bad_value: fill_value) pairs
+    :param splitter_class: Splitter class for splitting data lines into columns
     """
     start_line = None
     end_line = None
     comment = None
     splitter_class = DefaultSplitter
-    fill_values = None
     
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
     def process_lines(self, lines):
-        """Strip out comment lines from list of ``lines``"""
+        """Strip out comment lines and blank lines from list of ``lines``
+
+        :param lines: all lines in table
+        :returns: list of lines
+        """
         nonblank_lines = (x for x in lines if x.strip())
         if self.comment:
             re_comment = re.compile(self.comment)
@@ -263,6 +281,8 @@ class BaseData(object):
             return [x for x in nonblank_lines]
 
     def get_data_lines(self, lines):
+        """Set the ``data_lines`` attribute to the lines slice comprising the
+        table data values."""
         data_lines = self.process_lines(lines)
         start_line = _get_line_index(self.start_line, data_lines)
         end_line = _get_line_index(self.end_line, data_lines)
@@ -273,9 +293,12 @@ class BaseData(object):
             self.data_lines = data_lines
 
     def get_str_vals(self):
+        """Return a generator that returns a list of column values (as strings)
+        for each data line."""
         return self.splitter(self.data_lines)
 
-    def set_masks(self, cols):
+    def _set_masks(self, cols):
+        """Placeholder code for mask support"""
         if self.fill_values is not None:
             for col in cols:
                 col.mask = [False] * len(col.str_vals)
@@ -305,16 +328,6 @@ class _DictLikeNumpy(dict):
 class BaseOutputter(object):
     """Output table as a dict of column objects keyed on column name.  The
     table data are stored as plain python lists within the column objects.
-
-    Example::
-    
-      reader = asciitable.Table()
-      reader.data.fill_values = {'': '-999'} # replace empty fields with -999
-      table = reader.read('mytable.dat')
-      table['x'].data # data for column 'x'
-      table['y'].mask # mask list for column 'y'
-      table.field('x')    # access column 'x'
-      table.dtype.names   # get column names in order
     """
     converters = {}
     default_converter = [lambda vals: [int(x) for x in vals],
@@ -347,7 +360,7 @@ class BaseOutputter(object):
 def convert_numpy(numpy_type):
     """Return a function that converts a list into a numpy array of the given
     ``numpy_type``.  This type must be a string corresponding to a numpy type,
-    e.g. 'int64' or 'str' or 'float32'.
+    example 'int64' or 'str' or 'float32'.
     """
     def converter(vals):
         return numpy.array(vals, getattr(numpy, numpy_type))
@@ -405,6 +418,8 @@ class BaseReader(object):
         self.data = BaseData()
         self.inputter = BaseInputter()
         self.outputter = BaseOutputter()
+        self.meta = {}                  # Placeholder for storing table metadata 
+        self.keywords = []              # Placeholder for storing table Keywords
 
     def read(self, table):
         """Read the ``table`` and return the results in a format determined by
@@ -427,9 +442,9 @@ class BaseReader(object):
         self.data.header = self.header
         self.header.data = self.data
 
-        lines = self.inputter.get_lines(table)
-        self.data.get_data_lines(lines)
-        self.header.get_cols(lines)
+        self.lines = self.inputter.get_lines(table)
+        self.data.get_data_lines(self.lines)
+        self.header.get_cols(self.lines)
         cols = self.header.cols
         self.data.splitter.cols = cols
 
@@ -447,38 +462,24 @@ class BaseReader(object):
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
 
-        self.data.set_masks(cols)
-
         return self.outputter(cols)
 
-class BasicReader(BaseReader):
-    """Derived reader class that reads a space-delimited table with a single
-    header line at the top followed by data lines to the end of the table.
-    Lines beginning with # as the first non-whitespace character are comments.
-    Example::
-    
-      # Column definition is the first uncommented line
-      # Default delimiter is the space character.
-      apples oranges pears
-
-      # Data starts after the header column definition, blank lines ignored
-      1 2 3
-      4 5 6
-    """
-    def __init__(self):
-        BaseReader.__init__(self)
-        self.header.splitter.delimiter = ' '
-        self.data.splitter.delimiter = ' '
-        self.header.start_line = 0
-        self.data.start_line = 1
-        self.header.comment = r'\s*#'
-        self.data.comment = r'\s*#'
+    @property
+    def comment_lines(self):
+        """Return lines in the table that match header.comment regexp"""
+        if not hasattr(self, 'lines'):
+            raise ValueError('Table must be read prior to accessing the header_comment_lines')
+        if self.header.comment:
+            re_comment = re.compile(self.header.comment)
+            comment_lines = [x for x in self.lines if re_comment.match(x)]
+        else:
+            comment_lines = []
+        return comment_lines
 
 extra_reader_pars = ('Reader', 'Inputter', 'Outputter', 
                      'delimiter', 'comment', 'quotechar', 'header_start',
                      'data_start', 'data_end', 'converters',
                      'data_Splitter', 'header_Splitter',
-                     'default_masked', 'auto_masked',
                      'names', 'include_names', 'exclude_names')
 
 def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs):
@@ -496,8 +497,6 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
     :param converters: dict of converters
     :param data_Splitter: Splitter class to split data columns
     :param header_Splitter: Splitter class to split header columns
-    :param auto_masked: use masked arrays if data reader has ``fill_values`` set
-    :param default_masked: always use masked arrays
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
@@ -540,10 +539,6 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
         reader.data.splitter = kwargs['data_Splitter']()
     if 'header_Splitter' in kwargs:
         reader.header.splitter = kwargs['header_Splitter']()
-    if 'default_masked' in kwargs:
-        reader.outputter.default_masked = kwargs['default_masked']
-    if 'auto_masked' in kwargs:
-        reader.outputter.auto_masked = kwargs['auto_masked']
     if 'names' in kwargs:
         reader.header.names = kwargs['names']
     if 'include_names' in kwargs:
@@ -571,8 +566,6 @@ def read(table, numpy=True, **kwargs):
     :param converters: dict of converters
     :param data_Splitter: Splitter class to split data columns
     :param header_Splitter: Splitter class to split header columns
-    :param auto_masked: use masked arrays if data reader has ``fill_values`` set
-    :param default_masked: always use masked arrays
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
@@ -602,9 +595,51 @@ def read(table, numpy=True, **kwargs):
 ############################################################################################################
 ############################################################################################################
 
+class BasicReader(BaseReader):
+    """Read a character-delimited table with a single header line at the top
+    followed by data lines to the end of the table.  Lines beginning with # as
+    the first non-whitespace character are comments.  This reader is highly
+    configurable.
+
+        rdr = asciitable.get_reader(Reader=BasicReader)
+        rdr.header.splitter.delimiter = ' '
+        rdr.data.splitter.delimiter = ' '
+        rdr.header.start_line = 0
+        rdr.data.start_line = 1
+        rdr.data.end_line = None
+        rdr.header.comment = r'\s*#'
+        rdr.data.comment = r'\s*#'
+
+    Example::
+    
+      # Column definition is the first uncommented line
+      # Default delimiter is the space character.
+      apples oranges pears
+
+      # Data starts after the header column definition, blank lines ignored
+      1 2 3
+      4 5 6
+    """
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header.splitter.delimiter = ' '
+        self.data.splitter.delimiter = ' '
+        self.header.start_line = 0
+        self.data.start_line = 1
+        self.header.comment = r'\s*#'
+        self.data.comment = r'\s*#'
+
+
 class ContinuationLinesInputter(BaseInputter):
-    """Inputter where lines ending in the ``continuation_char`` are joined
-    with the subsequent line."""
+    """Inputter where lines ending in ``continuation_char`` are joined
+    with the subsequent line.  Example::
+
+      col1 col2 col3
+      1 \
+      2 3
+      4 5 \
+      6
+    """
 
     continuation_char = '\\'
 
@@ -626,8 +661,13 @@ class ContinuationLinesInputter(BaseInputter):
 
 
 class NoHeaderReader(BasicReader):
-    """Same as BasicReader but without a header.  Columns are autonamed using
-    header.auto_format which defaults to "col%d".
+    """Read a table with no header line.  Columns are autonamed using
+    header.auto_format which defaults to "col%d".  Otherwise this reader
+    the same as the ``BasicReader`` from which it is derived.  Example::
+
+      # Table data
+      1 2 "hello there"
+      3 4 world
     """
     def __init__(self):
         BasicReader.__init__(self)
@@ -636,7 +676,7 @@ class NoHeaderReader(BasicReader):
 
 class CommentedHeader(BaseHeader):
     """Header class for which the column definition line starts with the
-    comment character.  
+    comment character.  See the ``CommentedHeaderReader`` for an example.
     """
     def process_lines(self, lines):
         """Return only lines that start with the comment regexp.  For these
@@ -649,10 +689,10 @@ class CommentedHeader(BaseHeader):
 
 class CommentedHeaderReader(BaseReader):
     """Read a file where the column names are given in a line that begins with the
-    header comment character, e.g.::
+    header comment character.  The default delimiter is the <space> character.::
 
       # col1 col2 col3
-      #  Comment...
+      # Comment line
       1 2 3
       4 5 6
     """
@@ -667,6 +707,13 @@ class CommentedHeaderReader(BaseReader):
         self.data.comment = r'\s*#'
 
 class TabReader(BasicReader):
+    """Read a tab-separated file.
+    Example::
+
+      col1 <tab> col2 <tab> col3
+      # Comment line
+      1 <tab> 2 <tab> 5
+    """
     def __init__(self):
         BasicReader.__init__(self)
         self.header.splitter.delimiter = '\t'
@@ -676,12 +723,34 @@ class TabReader(BasicReader):
         self.data.splitter.process_line = None
 
 class RdbReader(TabReader):
+    """Read a tab-separated file with an extra line after the column definition
+    line.  The RDB format meets this definition.  Example::
+
+      col1 <tab> col2 <tab> col3
+      N <tab> S <tab> N
+      1 <tab> 2 <tab> 5
+
+    In this reader the second line is just ignored.
+    """
     def __init__(self):
         TabReader.__init__(self)
         self.data.start_line = 2
 
 class DaophotReader(BaseReader):
-    """Derived reader class that reads a DAOphot file."""
+    """Read a DAOphot file.
+    Example::
+
+      #K MERGERAD   = INDEF                   scaleunit  %-23.7g  #
+      #N ID    XCENTER   YCENTER   MAG         MERR          MSKY           NITER    \\
+      #U ##    pixels    pixels    magnitudes  magnitudes    counts         ##       \\
+      #F %-9d  %-10.3f   %-10.3f   %-12.3f     %-14.3f       %-15.7g        %-6d     #
+      #N         SHARPNESS   CHI         PIER  PERROR                                \\
+      #U         ##          ##          ##    perrors                               \\
+      #F         %-23.3f     %-12.3f     %-6d  %-13s                                 #
+      14       138.538   256.405   15.461      0.003         34.85955       4        \\
+      -0.032      0.802       0     No_error
+    """
+    
     def __init__(self):
         BaseReader.__init__(self)
         self.header = DaophotHeader()
@@ -691,22 +760,12 @@ class DaophotReader(BaseReader):
         self.data.comment = r'\s*#'
 
 class DaophotHeader(BaseHeader):
-    """Read the header from a file produced by the IRAF DAOphot routine.  This looks like::
+    """Read the header from a file produced by the IRAF DAOphot routine."""
 
-         #K MERGERAD   = INDEF                   scaleunit  %-23.7g  #
-         #N ID    XCENTER   YCENTER   MAG         MERR          MSKY           NITER    \
-         #U ##    pixels    pixels    magnitudes  magnitudes    counts         ##       \
-         #F %-9d  %-10.3f   %-10.3f   %-12.3f     %-14.3f       %-15.7g        %-6d     #
-         #N         SHARPNESS   CHI         PIER  PERROR                                \
-         #U         ##          ##          ##    perrors                               \
-         #F         %-23.3f     %-12.3f     %-6d  %-13s                                 #
-    """
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a DAOphot
-        header.
-
-        The DAOphot header is specialized so that we just copy the entire BaseHeader
-        get_cols routine and modify as needed.  Don't bother with making it extensible.
+        header.  The DAOphot header is specialized so that we just copy the entire BaseHeader
+        get_cols routine and modify as needed.
 
         :param lines: list of table lines
         :returns: list of table Columns
@@ -771,7 +830,7 @@ class FixedWidthSplitter(BaseSplitter):
 class CdsHeader(BaseHeader):
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a CDS
-        header.  See http://vizier.u-strasbg.fr/doc/catstd/catstd-3.1.htx.
+        header. 
 
         :param lines: list of table lines
         :returns: list of table Columns
@@ -817,7 +876,7 @@ class CdsHeader(BaseHeader):
         self.cols = [x for x in cols if x.name in names]
 
         # Re-index the cols because the FixedWidthSplitter does NOT return the ignored
-        # cols (as is in the case for typical delimiter-based splitters)
+        # cols (as is the case for typical delimiter-based splitters)
         for i, col in enumerate(self.cols):
             col.index = i
             
@@ -835,12 +894,138 @@ class CdsData(BaseData):
 
 
 class CdsReader(BaseReader):
-    """Read a CDS format file.
+    """Read a CDS format table: http://vizier.u-strasbg.fr/doc/catstd.htx.
+    Example::
 
-    See http://vizier.u-strasbg.fr/doc/catstd/catstd-3.1.htx or the test file
-    t/cds.dat"""
+      Table: Spitzer-identified YSOs: Addendum
+      ================================================================================
+      Byte-by-byte Description of file: datafile3.txt
+      --------------------------------------------------------------------------------
+         Bytes Format Units  Label  Explanations
+      --------------------------------------------------------------------------------
+         1-  3 I3     ---    Index  Running identification number
+         5-  6 I2     h      RAh    Hour of Right Ascension (J2000) 
+         8-  9 I2     min    RAm    Minute of Right Ascension (J2000) 
+        11- 15 F5.2   s      RAs    Second of Right Ascension (J2000) 
+      --------------------------------------------------------------------------------
+        1 03 28 39.09
+
+    Caveats:
+
+    * Format, Units, and Explanations are available in the ``Reader.cols`` attribute,
+      but are not otherwise used.
+    * All of the other metadata defined by this format is ignored.
+
+    Code contribution to enhance the parsing to include metadata in a Reader.meta
+    attribute would be welcome.
+    """
     def __init__(self):
         BaseReader.__init__(self)
         self.header = CdsHeader()
         self.data = CdsData()
 
+class IpacReader(BaseReader):
+    """Read an IPAC format table:
+    http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html::
+
+      \\name=value                                                    
+      \\ Comment                                                      
+      |  column1 |  column2 | column3 | column4  |    column5       |
+      |  double  |  double  |   int   |   double |     char         |
+      |   unit   |   unit   |   unit  |    unit  |     unit         |
+      |   null   |   null   |   null  |    null  |     null         |
+       2.0978     29.09056   73765     2.06000    B8IVpMnHg          
+    
+    Or::
+    
+      |-----ra---|----dec---|---sao---|------v---|----sptype--------|
+        2.09708   29.09056     73765    2.06000   B8IVpMnHg
+    
+    Caveats:
+    
+    * Data type, Units, and Null value specifications are ignored.
+    * Keywords are ignored.
+    * The IPAC spec requires the first two header lines but this reader only 
+      requires the initial column name definition line
+
+    Overcoming these limitations would not be difficult, code contributions
+    welcome from motivated users.
+    """
+    def __init__(self):
+        BaseReader.__init__(self)
+        self.header = IpacHeader()
+        self.data = IpacData()
+
+class IpacHeader(BaseHeader):
+    """IPAC table header"""
+    comment = r'\\'
+    splitter_class = BaseSplitter
+    
+    def __init__(self):
+        self.splitter = self.__class__.splitter_class()
+        self.splitter.process_line = None
+        self.splitter.process_val = None
+        self.splitter.delimiter = '|'
+
+    def process_lines(self, lines):
+        """Generator to yield IPAC header lines, i.e. those starting and ending with
+        delimiter character."""
+        delim = self.splitter.delimiter
+        for line in lines:
+            if line.startswith(delim) and line.endswith(delim):
+                yield line.strip(delim)
+
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+
+        Based on the previously set Header attributes find or create the column names.
+        Sets ``self.cols`` with the list of Columns.  This list only includes the actual
+        requested columns after filtering by the include_names and exclude_names
+        attributes.  See ``self.names`` for the full list.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
+        header_lines = self.process_lines(lines)  # generator returning valid header lines
+        header_vals = [vals for vals in self.splitter(header_lines)]
+        if len(header_vals) == 0:
+            raise ValueError('At least one header line beginning and ending with delimiter required')
+        elif len(header_vals) > 4:
+            raise ValueError('More than four header lines were found')
+
+        # Generate column definitions
+        cols = []
+        start = 1
+        for i, name in enumerate(header_vals[0]):
+            col = Column(name=name.strip(' -'), index=i)
+            col.start = start
+            col.end = start + len(name) 
+            if len(header_vals) > 1:
+                col.type = header_vals[1][i].strip(' -')
+            if len(header_vals) > 2:
+                col.units = header_vals[2][i].strip() # Can't strip dashes here
+            if len(header_vals) > 3:
+                col.null = header_vals[3][i].strip() # Can't strip dashes here
+            start = col.end + 1
+            cols.append(col)
+        
+        # Standard column name filtering (include or exclude names)
+        self.names = [x.name for x in cols]
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        # Generate final list of cols and re-index the cols because the
+        # FixedWidthSplitter does NOT return the ignored cols (as is the
+        # case for typical delimiter-based splitters)
+        self.cols = [x for x in cols if x.name in names]
+        for i, col in enumerate(self.cols):
+            col.index = i
+
+class IpacData(BaseData):
+    """IPAC table data reader"""
+    splitter_class = FixedWidthSplitter
+    comment = r'[|\\]'
+    

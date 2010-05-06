@@ -1,4 +1,4 @@
 include t/*
 include test.py
 include doc/*.rst
-
+include CHANGES

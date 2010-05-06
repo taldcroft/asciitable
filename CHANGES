@@ -1,3 +1,22 @@
+0.2.2
+=====
+Add IPAC reader and reader comment_lines attribute plus doc updates.
+
+- Add IPAC format reader
+
+- Add 'comment_lines' attribute to BaseReader class to return all lines
+  matching the header comment character.
+
+- Made the table lines retrieved by the Inputter available as the 
+  Reader object 'lines' attribute in the BaseReader.read() function.
+
+- Updates and reorganization of doc-strings and documentation
+
+- Removed the non-working code related to mask support (try again later)
+
+- Added 'meta' and 'keywords' attributes to BaseReader and added a Keywords
+  class.  This is a placeholder for future support of table metadata.
+
 0.2.1
 =====
 Add support for reading CDS format files (header + data in one file)

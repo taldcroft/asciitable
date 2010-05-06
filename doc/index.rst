@@ -3,12 +3,23 @@
 An extensible ASCII table reader.
 
 At the top level ``asciitable`` looks like many other ASCII table readers since
-it provides a default ``read()`` function with a long list of parameters to accommodate
-the many variations possible in commonly encountered ASCII table formats.  But unlike
-other monolithic table reader implementations, ``asciitable`` is based on a modular
-and extensible class structure.  If a new format is encountered that cannot be handled
-by the existing hooks in the ``read()`` function then underlying class methods can be 
-tweaked as needed.  
+it provides a default ``read()`` function with a long list of parameters to
+accommodate the many variations possible in commonly encountered ASCII table
+formats.  But unlike other monolithic table reader implementations,
+``asciitable`` is based on a modular and extensible class structure.  Formats
+that cannot be handled by the existing hooks in the ``read()`` function can be
+accomodated by modifying the underlying class methods as needed.
+
+The section `Extension Reader Classes`_ documents currently available classes
+that handle a range of formats from basic tables (customizable delimiters and
+header configurations) to specialized formats like DAOphot output, CDS / Vizier
+/ ApJ machine readable tables, and IPAC tables.
+
+:Copyright: Smithsonian Astrophysical Observatory (2010) 
+:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+
+Code overview
+----------------------------
 
 The key elements in ``asciitable`` are:
 
@@ -24,9 +35,6 @@ corresponding functionality.  In this way the large number of tweakable
 parameters is modularized into managable groups.  Where it makes sense these
 attributes are actually functions that make it easy to handle special cases.
 
-:Copyright: Smithsonian Astrophysical Observatory (2009)
-:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
-
 Requirements
 ---------------
 * :mod:`asciitable` has been tested with Python 2.4, 2.5 and 2.6.  It might work with other versions.
@@ -39,9 +47,11 @@ The :mod:`asciitable` package is available in the `<http://cxc.harvard.edu/contr
 
 Examples
 --------
-In most cases an ASCII table can be read with the ``read()`` function by specifying the 
-delimiter and the location of the header and data.  The following examples use test files
-providing the in source distribution.::
+In most cases an ASCII table can be read with the ``read()`` function by
+specifying the delimiter and the location of the header and data.  The
+following examples use test files providing the in source distribution.  The
+``test.py`` file also contains numerous other examples showing how to read the
+test datasets in the ``t/`` directory of the source distribution.::
 
   import asciitable
   data = asciitable.read('t/nls1_stackinfo.dbout', data_start=2, delimiter='|')
@@ -95,9 +105,6 @@ providing the in source distribution.::
   rdb_reader.data.splitter.process_val = process_val
 
 
-More complicated examples are provided in the nose testing file ``test.py`` in the source
-distribution.
-
 asciitable API
 ==============
 
@@ -112,69 +119,9 @@ Functions
 
 .. autofunction:: convert_numpy
 
-Classes
+Core Classes
 --------------
 .. autoclass:: BaseReader
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: BasicReader
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: NoHeaderReader
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: TabReader
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: RdbReader
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: Column
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: BaseInputter
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: BaseSplitter
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: DefaultSplitter
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: TextSimpleSplitter
-   :show-inheritance:
-   :members:
-   :inherited-members:
-   :undoc-members:
-
-.. autoclass:: BaseHeader
    :show-inheritance:
    :members:
    :inherited-members:
@@ -186,7 +133,43 @@ Classes
    :inherited-members:
    :undoc-members:
 
+.. autoclass:: BaseHeader
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: BaseInputter
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
 .. autoclass:: BaseOutputter
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: BaseSplitter
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: Column
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: DefaultSplitter
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: InconsistentTableError
    :show-inheritance:
    :members:
    :inherited-members:
@@ -198,10 +181,98 @@ Classes
    :inherited-members:
    :undoc-members:
 
-.. autoclass:: InconsistentTableError
+
+Extension Reader Classes
+-------------------------
+
+The following classes extend the base Reader functionality to handle different
+table formats.  Some, such as the ``BasicReader`` are fairly general and
+include a number of configurable attributes.  Others such as ``CdsReader`` or
+``DaophotReader`` are specialized to read certain well-defined but
+idiosyncratic formats.
+
+.. autoclass:: BasicReader
    :show-inheritance:
    :members:
-   :inherited-members:
+   :undoc-members:
+
+.. autoclass:: CdsReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: CommentedHeaderReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: DaophotReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: IpacReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: NoHeaderReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: RdbReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: TabReader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+Other extension classes
+-----------------------
+These classes provide support for extension readers.
+
+.. autoclass:: CdsData
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: CdsHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: CommentedHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: ContinuationLinesInputter
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: DaophotHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: FixedWidthSplitter
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: IpacData
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: IpacHeader
+   :show-inheritance:
+   :members:
    :undoc-members:
 
 Contents:
