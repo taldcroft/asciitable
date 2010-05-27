@@ -598,7 +598,7 @@ def read(table, numpy=True, **kwargs):
 ############################################################################################################
 ############################################################################################################
 
-class BasicReader(BaseReader):
+class Basic(BaseReader):
     """Read a character-delimited table with a single header line at the top
     followed by data lines to the end of the table.  Lines beginning with # as
     the first non-whitespace character are comments.  This reader is highly
@@ -633,6 +633,7 @@ class BasicReader(BaseReader):
         self.header.comment = r'\s*#'
         self.data.comment = r'\s*#'
 
+BasicReader = Basic
 
 class ContinuationLinesInputter(BaseInputter):
     """Inputter where lines ending in ``continuation_char`` are joined
@@ -664,23 +665,25 @@ class ContinuationLinesInputter(BaseInputter):
         return outlines
 
 
-class NoHeaderReader(BasicReader):
+class NoHeader(BasicReader):
     """Read a table with no header line.  Columns are autonamed using
     header.auto_format which defaults to "col%d".  Otherwise this reader
-    the same as the ``BasicReader`` from which it is derived.  Example::
+    the same as the :class:`Basic` class from which it is derived.  Example::
 
       # Table data
       1 2 "hello there"
       3 4 world
     """
     def __init__(self):
-        BasicReader.__init__(self)
+        Basic.__init__(self)
         self.header.start_line = None
         self.data.start_line = 0
 
-class CommentedHeader(BaseHeader):
+NoHeaderReader = NoHeader
+
+class CommentedHeaderHeader(BaseHeader):
     """Header class for which the column definition line starts with the
-    comment character.  See the ``CommentedHeaderReader`` for an example.
+    comment character.  See the :class:`CommentedHeader` class  for an example.
     """
     def process_lines(self, lines):
         """Return only lines that start with the comment regexp.  For these
@@ -691,7 +694,7 @@ class CommentedHeader(BaseHeader):
             if match:
                 yield line[match.end():]
 
-class CommentedHeaderReader(BaseReader):
+class CommentedHeader(BaseReader):
     """Read a file where the column names are given in a line that begins with the
     header comment character.  The default delimiter is the <space> character.::
 
@@ -702,7 +705,7 @@ class CommentedHeaderReader(BaseReader):
     """
     def __init__(self):
         BaseReader.__init__(self)
-        self.header = CommentedHeader()
+        self.header = CommentedHeaderHeader()
         self.header.splitter.delimiter = ' '
         self.data.splitter.delimiter = ' '
         self.header.start_line = 0
@@ -710,8 +713,13 @@ class CommentedHeaderReader(BaseReader):
         self.header.comment = r'\s*#'
         self.data.comment = r'\s*#'
 
-class TabReader(BasicReader):
-    """Read a tab-separated file.
+CommentedHeaderReader = CommentedHeader
+
+class Tab(BasicReader):
+    """Read a tab-separated file.  Unlike the :class:`Basic` reader, whitespace is 
+    not stripped from the beginning and end of lines.  By default whitespace is
+    still stripped from the beginning and end of individual column values.
+
     Example::
 
       col1 <tab> col2 <tab> col3
@@ -719,14 +727,16 @@ class TabReader(BasicReader):
       1 <tab> 2 <tab> 5
     """
     def __init__(self):
-        BasicReader.__init__(self)
+        Basic.__init__(self)
         self.header.splitter.delimiter = '\t'
         self.data.splitter.delimiter = '\t'
         # Don't strip line whitespace since that includes tabs
         self.header.splitter.process_line = None  
         self.data.splitter.process_line = None
 
-class RdbReader(TabReader):
+TabReader = Tab
+
+class Rdb(TabReader):
     """Read a tab-separated file with an extra line after the column definition
     line.  The RDB format meets this definition.  Example::
 
@@ -740,7 +750,9 @@ class RdbReader(TabReader):
         TabReader.__init__(self)
         self.data.start_line = 2
 
-class DaophotReader(BaseReader):
+RdbReader = Rdb
+
+class Daophot(BaseReader):
     """Read a DAOphot file.
     Example::
 
@@ -762,6 +774,8 @@ class DaophotReader(BaseReader):
         self.data.splitter.delimiter = ' '
         self.data.start_line = 0
         self.data.comment = r'\s*#'
+
+DaophotReader = Daophot
 
 class DaophotHeader(BaseHeader):
     """Read the header from a file produced by the IRAF DAOphot routine."""
@@ -897,7 +911,7 @@ class CdsData(BaseData):
         return lines[i_sections[-1]+1 : ]
 
 
-class CdsReader(BaseReader):
+class Cds(BaseReader):
     """Read a CDS format table: http://vizier.u-strasbg.fr/doc/catstd.htx.
     Example::
 
@@ -928,7 +942,9 @@ class CdsReader(BaseReader):
         self.header = CdsHeader()
         self.data = CdsData()
 
-class IpacReader(BaseReader):
+CdsReader = Cds
+
+class Ipac(BaseReader):
     """Read an IPAC format table:
     http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html::
 
@@ -959,6 +975,8 @@ class IpacReader(BaseReader):
         BaseReader.__init__(self)
         self.header = IpacHeader()
         self.data = IpacData()
+
+IpacReader = Ipac
 
 class IpacHeader(BaseHeader):
     """IPAC table header"""

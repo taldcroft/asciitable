@@ -12,14 +12,14 @@ accomodated by modifying the underlying class methods as needed.
 
 The :mod:`asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_ (derived from `base class elements`_):
 
-* :class:`~asciitable.BasicReader`: basic table with customizable delimiters and header configurations
-* :class:`~asciitable.CdsReader`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
-* :class:`~asciitable.CommentedHeaderReader`: column names given in a line that begins with the comment character
-* :class:`~asciitable.DaophotReader`: table from the IRAF DAOphot package
-* :class:`~asciitable.IpacReader`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
-* :class:`~asciitable.NoHeaderReader`: basic table with no header where columns are auto-named
-* :class:`~asciitable.RdbReader`: tab-separated values with an extra line after the column definition line
-* :class:`~asciitable.TabReader`: tab-separated values
+* :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
+* :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
+* :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
+* :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
+* :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
+* :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
+* :class:`~asciitable.Tab`: tab-separated values
 
 :Copyright: Smithsonian Astrophysical Observatory (2010) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
@@ -57,58 +57,60 @@ In most cases an ASCII table can be read with the ``read()`` function by
 specifying the delimiter and the location of the header and data.  The
 following examples use test files providing the in source distribution.  The
 ``test.py`` file also contains numerous other examples showing how to read the
-test datasets in the ``t/`` directory of the source distribution.::
+test datasets in the ``t/`` directory of the source distribution.
 
-  import asciitable
-  data = asciitable.read('t/nls1_stackinfo.dbout', data_start=2, delimiter='|')
-  data = asciitable.read('t/simple.txt' quotechar="'")
+.. code-block:: python
 
-  # Read a file with no header using the NoHeaderReader.  Column names are auto-generated.
-  data = asciitable.read('t/simple4.txt', Reader=asciitable.NoHeaderReader, delimiter='|')
+   import asciitable
+   data = asciitable.read('t/nls1_stackinfo.dbout', data_start=2, delimiter='|')
+   data = asciitable.read('t/simple.txt' quotechar="'")
 
-  table = ['col1 col2 col3', '1 2 hi', '3 4.2 there']
-  data = asciitable.read(table)
+   # Read a file with no header using the NoHeader Reader class.  Column names are auto-generated.
+   data = asciitable.read('t/simple4.txt', Reader=asciitable.NoHeader, delimiter='|')
 
-  # Define a custom reader functionally
-  def read_rdb_table(table):
-      reader = asciitable.BasicReader()
-      reader.header.splitter.delimiter = '\t'
-      reader.data.splitter.delimiter = '\t'
-      reader.header.splitter.process_line = None  
-      reader.data.splitter.process_line = None
-      reader.data.start_line = 2
+   table = ['col1 col2 col3', '1 2 hi', '3 4.2 there']
+   data = asciitable.read(table)
 
-      return reader.read(table)
+   # Define a custom reader functionally
+   def read_rdb_table(table):
+       reader = asciitable.Basic()
+       reader.header.splitter.delimiter = '\t'
+       reader.data.splitter.delimiter = '\t'
+       reader.header.splitter.process_line = None  
+       reader.data.splitter.process_line = None
+       reader.data.start_line = 2
 
-  # Define custom readers by class inheritance.
-  # Note: TabReader and RdbReader are already included in asciitable for convenience.
-  class TabReader(BasicReader):
-      def __init__(self):
-          BasicReader.__init__(self)
-          self.header.splitter.delimiter = '\t'
-          self.data.splitter.delimiter = '\t'
-          # Don't strip line whitespace since that includes tabs
-          self.header.splitter.process_line = None  
-          self.data.splitter.process_line = None
+       return reader.read(table)
 
-  class RdbReader(TabReader):
-      def __init__(self):
-          TabReader.__init__(self)
-          self.data.start_line = 2
+   # Define custom readers by class inheritance.
+   # Note: Tab and Rdb are already included in asciitable for convenience.
+   class Tab(asciitable.Basic):
+       def __init__(self):
+           asciitable.Basic.__init__(self)
+           self.header.splitter.delimiter = '\t'
+           self.data.splitter.delimiter = '\t'
+           # Don't strip line whitespace since that includes tabs
+           self.header.splitter.process_line = None  
+           self.data.splitter.process_line = None
 
-  # Create a custom splitter.process_val function.  The default normally just
-  # strips whitespace.  In addition have it replace empty fields with -999.
-  def process_val(x):
-      """Custom splitter process_val function: Remove whitespace at the beginning
-      or end of value and substitute -999 for any blank entries."""
-      x = x.strip()
-      if x == '':
-          x = '-999'
-      return x
+   class Rdb(asciitable.Tab):
+       def __init__(self):
+           asciitable.Tab.__init__(self)
+           self.data.start_line = 2
 
-  # Create an RDB reader and override the splitter.process_val function
-  rdb_reader = asciitable.get_reader(Reader=asciitable.RdbReader)
-  rdb_reader.data.splitter.process_val = process_val
+   # Create a custom splitter.process_val function.  The default normally just
+   # strips whitespace.  In addition have it replace empty fields with -999.
+   def process_val(x):
+       """Custom splitter process_val function: Remove whitespace at the beginning
+       or end of value and substitute -999 for any blank entries."""
+       x = x.strip()
+       if x == '':
+           x = '-999'
+       return x
+
+   # Create an RDB reader and override the splitter.process_val function
+   rdb_reader = asciitable.get_reader(Reader=asciitable.Rdb)
+   rdb_reader.data.splitter.process_val = process_val
 
 
 asciitable API
@@ -192,47 +194,56 @@ Extension Reader Classes
 -------------------------
 
 The following classes extend the base Reader functionality to handle different
-table formats.  Some, such as the ``BasicReader`` are fairly general and
-include a number of configurable attributes.  Others such as ``CdsReader`` or
-``DaophotReader`` are specialized to read certain well-defined but
-idiosyncratic formats.
+table formats.  Some, such as the :class:`Basic` Reader class are fairly
+general and include a number of configurable attributes.  Others such as
+:class:`Cds` or :class:`Daophot` are specialized to read certain well-defined
+but idiosyncratic formats.
 
-.. autoclass:: BasicReader
+* :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
+* :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
+* :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
+* :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
+* :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
+* :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
+* :class:`~asciitable.Tab`: tab-separated values
+
+.. autoclass:: Basic
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: CdsReader
+.. autoclass:: Cds
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: CommentedHeaderReader
+.. autoclass:: CommentedHeader
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: DaophotReader
+.. autoclass:: Daophot
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: IpacReader
+.. autoclass:: Ipac
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: NoHeaderReader
+.. autoclass:: NoHeader
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: RdbReader
+.. autoclass:: Rdb
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: TabReader
+.. autoclass:: Tab
    :show-inheritance:
    :members:
    :undoc-members:
@@ -251,7 +262,7 @@ These classes provide support for extension readers.
    :members:
    :undoc-members:
 
-.. autoclass:: CommentedHeader
+.. autoclass:: CommentedHeaderHeader
    :show-inheritance:
    :members:
    :undoc-members:
