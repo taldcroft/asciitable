@@ -10,7 +10,7 @@ formats.  But unlike other monolithic table reader implementations,
 that cannot be handled by the existing hooks in the ``read()`` function can be
 accomodated by modifying the underlying class methods as needed.
 
-The :mod:`asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_ (derived from `base class elements`_):
+:mod:`Asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_ (derived from `base class elements`_):
 
 * :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
 * :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
