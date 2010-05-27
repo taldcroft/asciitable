@@ -2,33 +2,39 @@
 ======================
 An extensible ASCII table reader.
 
-At the top level ``asciitable`` looks like many other ASCII table readers since
-it provides a default ``read()`` function with a long list of parameters to
+At the top level :mod:`asciitable` looks like many other ASCII table readers since
+it provides a default :func:`~asciitable.read` function with a long list of parameters to
 accommodate the many variations possible in commonly encountered ASCII table
 formats.  But unlike other monolithic table reader implementations,
-``asciitable`` is based on a modular and extensible class structure.  Formats
+:mod:`asciitable` is based on a modular and extensible class structure.  Formats
 that cannot be handled by the existing hooks in the ``read()`` function can be
 accomodated by modifying the underlying class methods as needed.
 
-The section `Extension Reader Classes`_ documents currently available classes
-that handle a range of formats from basic tables (customizable delimiters and
-header configurations) to specialized formats like DAOphot output, CDS / Vizier
-/ ApJ machine readable tables, and IPAC tables.
+The :mod:`asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_ (derived from `base class elements`_):
+
+* :class:`~asciitable.BasicReader`: basic table with customizable delimiters and header configurations
+* :class:`~asciitable.CdsReader`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
+* :class:`~asciitable.CommentedHeaderReader`: column names given in a line that begins with the comment character
+* :class:`~asciitable.DaophotReader`: table from the IRAF DAOphot package
+* :class:`~asciitable.IpacReader`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.NoHeaderReader`: basic table with no header where columns are auto-named
+* :class:`~asciitable.RdbReader`: tab-separated values with an extra line after the column definition line
+* :class:`~asciitable.TabReader`: tab-separated values
 
 :Copyright: Smithsonian Astrophysical Observatory (2010) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
 
-Code overview
+Base class elements
 ----------------------------
 
-The key elements in ``asciitable`` are:
+The key elements in :mod:`asciitable` are:
 
-* **Column**: Internal storage of column properties and data.
-* **Inputter**: Get the lines from the table input.
-* **Splitter**: Split the lines into string column values.
-* **Header**: Initialize output columns based on the table header or user input.
-* **Data**: Populate column data from the table.
-* **Outputter**: Convert column data to the specified output format, e.g. numpy structured array.
+* :class:`~asciitable.Column`: Internal storage of column properties and data ()
+* :class:`Inputter <asciitable.BaseInputter>`: Get the lines from the table input.
+* :class:`Splitter <asciitable.BaseSplitter>`: Split the lines into string column values.
+* :class:`Header <asciitable.BaseHeader>`: Initialize output columns based on the table header or user input.
+* :class:`Data <asciitable.BaseData>`: Populate column data from the table.
+* :class:`Outputter <asciitable.BaseOutputter>`: Convert column data to the specified output format, e.g. `NumPy <http://numpy.scipy.org/>`_ structured array.
 
 Each of these elements is an inheritable class with attributes that control the
 corresponding functionality.  In this way the large number of tweakable

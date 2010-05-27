@@ -483,11 +483,13 @@ extra_reader_pars = ('Reader', 'Inputter', 'Outputter',
                      'names', 'include_names', 'exclude_names')
 
 def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs):
-    """Initialize a table reader allowing for common customizations.
+    """Initialize a table reader allowing for common customizations.  Most of the
+    default behavior for various parameters is determined by the Reader class.
 
-    :param Reader: Reader class
-    :param Inputter: Inputter class
+    :param Reader: Reader class (default= :class:`BasicReader`)
+    :param Inputter: Inputter class 
     :param Outputter: Outputter class
+    :param numpy: use the NumpyOutputter class else use BaseOutputter (default=True)
     :param delimiter: column delimiter string
     :param comment: regular expression defining a comment line in table
     :param quotechar: one-character string to quote fields containing special characters
@@ -550,11 +552,12 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
 def read(table, numpy=True, **kwargs):
     """Read the input ``table``.  If ``numpy`` is True (default) return the
-    table in a numpy record array.  Otherwise return the table as a
-    dictionary of column objects using plain python lists to hold the data.
+    table in a numpy record array.  Otherwise return the table as a dictionary
+    of column objects using plain python lists to hold the data.  Most of the
+    default behavior for various parameters is determined by the Reader class.
 
-    :param numpy: use the NumpyOutputter class else use BaseOutputter (default=True)
-    :param Reader: Reader class
+    :param numpy: use the :class:`NumpyOutputter` class else use :class:`BaseOutputter` (default=True)
+    :param Reader: Reader class (default= :class:`~asciitable.BasicReader` )
     :param Inputter: Inputter class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
@@ -600,8 +603,9 @@ class BasicReader(BaseReader):
     followed by data lines to the end of the table.  Lines beginning with # as
     the first non-whitespace character are comments.  This reader is highly
     configurable.
+    ::
 
-        rdr = asciitable.get_reader(Reader=BasicReader)
+        rdr = asciitable.get_reader(Reader=asciitable.Basic)
         rdr.header.splitter.delimiter = ' '
         rdr.data.splitter.delimiter = ' '
         rdr.header.start_line = 0
@@ -610,7 +614,7 @@ class BasicReader(BaseReader):
         rdr.header.comment = r'\s*#'
         rdr.data.comment = r'\s*#'
 
-    Example::
+    Example table::
     
       # Column definition is the first uncommented line
       # Default delimiter is the space character.
@@ -840,7 +844,7 @@ class CdsHeader(BaseHeader):
                 break
 
         re_col_def = re.compile(r"""\s*
-                                    (?P<start> \d+ \s* -)? \s+
+                                    (?P<start> \d+ \s* -)? \s*
                                     (?P<end>   \d+)        \s+
                                     (?P<format> [\w.]+)     \s+
                                     (?P<units> \S+)        \s+
