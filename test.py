@@ -33,6 +33,11 @@ cols = {
     "t/continuation.dat": ('col1', 'col2', 'col3', 'col4', 'col5'),
     "t/cds.dat": ('Index', 'RAh', 'RAm', 'RAs', 'DE-', 'DEd', 'DEm', 'DEs', 'Match', 'Class', 'AK', 'Fit'),
     "t/ipac.dat": ('ra', 'dec', 'sai', 'v2', 'sptype'),
+    "t/no_data_cds.dat": ('Index', 'RAh', 'RAm', 'RAs', 'DE-', 'DEd', 'DEm', 'DEs', 'Match', 'Class', 'AK', 'Fit'),
+    "t/no_data_ipac.dat": ('ra', 'dec', 'sai', 'v2', 'sptype'),
+    "t/no_data_daophot.dat" : ('ID', 'XCENTER', 'YCENTER', 'MAG', 'MERR', 'MSKY', 'NITER',
+                       'SHARPNESS', 'CHI', 'PIER', 'PERROR'),
+    "t/no_data_with_header": ('a', 'b', 'c'),
    }
 nrows = {
     "t/short.tab" : 7,
@@ -51,6 +56,10 @@ nrows = {
     "t/continuation.dat": 2,
     "t/cds.dat": 1,
     "t/ipac.dat": 2,
+    "t/no_data_cds.dat": 0,
+    "t/no_data_ipac.dat": 0,
+    "t/no_data_daophot.dat" : 0,
+    "t/no_data_with_header": 0,
     }
 
 opt = {
@@ -70,6 +79,10 @@ opt = {
                            'Inputter': asciitable.ContinuationLinesInputter},
     "t/cds.dat": {'Reader': asciitable.CdsReader},
     "t/ipac.dat": {'Reader': asciitable.IpacReader},
+    "t/no_data_cds.dat": {'Reader': asciitable.CdsReader},
+    "t/no_data_ipac.dat": {'Reader': asciitable.IpacReader},
+    "t/no_data_daophot.dat" : {'Reader': asciitable.DaophotReader},
+    "t/no_data_with_header": {},
     }    
 
 def test_read_all_files_numpy():
@@ -90,6 +103,10 @@ def test_read_all_files_list():
             assert_equal(set(table.keys()), set(cols[f]))
             for colval in table.values():
                 assert_equal(len(colval.data), nrows[f])
+
+@raises(asciitable.InconsistentTableError)
+def test_empty_table_no_header():
+    table = asciitable.read('t/no_data_without_header.dat', Reader=asciitable.NoHeader)
 
 @raises(asciitable.InconsistentTableError)
 def test_wrong_quote():

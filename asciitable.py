@@ -230,14 +230,17 @@ class BaseHeader(object):
         :param lines: list of table lines
         :returns: list of table Columns
         """
-        # Get the data values from the first line of table data to determine n_data_cols
-        first_data_vals = self.data.get_str_vals().next()
-        n_data_cols = len(first_data_vals)
 
         start_line = _get_line_index(self.start_line, lines)
         if start_line is None:
             # No header line so auto-generate names from n_data_cols
             if self.names is None:
+                # Get the data values from the first line of table data to determine n_data_cols
+                try:
+                    first_data_vals = self.data.get_str_vals().next()
+                except StopIteration:
+                    raise InconsistentTableError('No data lines found so cannot autogenerate column names')
+                n_data_cols = len(first_data_vals)
                 self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
 
         elif self.names is None:
@@ -250,14 +253,6 @@ class BaseHeader(object):
 
             self.names = self.splitter([line]).next()
         
-        if len(self.names) != n_data_cols:
-            errmsg = ('Number of header columns (%d) inconsistent with '
-                      'data columns (%d) in first line\n'
-                      'Header values: %s\n'
-                      'Data values: %s' % (len(self.names), len(first_data_vals),
-                                           self.names, first_data_vals))
-            raise InconsistentTableError(errmsg)
-
         names = set(self.names)
         if self.include_names is not None:
             names.intersection_update(self.include_names)
@@ -470,12 +465,11 @@ class BaseReader(object):
         self.lines = self.inputter.get_lines(table)
         self.data.get_data_lines(self.lines)
         self.header.get_cols(self.lines)
-        cols = self.header.cols
+        cols = self.header.cols         # header.cols corresponds to *output* columns requested
+        n_data_cols = len(self.header.names) # header.names corresponds to *all* header columns in table
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
-            if i == 0:
-                n_data_cols = len(str_vals)
             if len(str_vals) != n_data_cols:
                 errmsg = ('Number of header columns (%d) inconsistent with '
                           'data columns (%d) at data line %d\n'
@@ -813,11 +807,7 @@ class DaophotHeader(BaseHeader):
         :param lines: list of table lines
         :returns: list of table Columns
         """
-        # Get the data values from the first line of table data to determine n_data_cols
-        first_data_vals = self.data.get_str_vals().next()
-        n_data_cols = len(first_data_vals)
 
-        # No column names supplied so read them from header line in table.
         self.names = []
         re_name_def = re.compile(r'#N([^#]+)#')
         for line in lines:
@@ -828,15 +818,6 @@ class DaophotHeader(BaseHeader):
                 if match:
                     self.names.extend(match.group(1).split())
         
-        ##  This code is all the same as the BaseHeader get_cols()
-        if len(self.names) != n_data_cols:
-            errmsg = ('Number of header columns (%d) inconsistent with '
-                      'data columns (%d) in first line\n'
-                      'Header values: %s\n'
-                      'Data values: %s' % (len(self.names), len(first_data_vals),
-                                           self.names, first_data_vals))
-            raise InconsistentTableError(errmsg)
-
         names = set(self.names)
         if self.include_names is not None:
             names.intersection_update(self.include_names)
