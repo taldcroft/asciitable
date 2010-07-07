@@ -23,7 +23,7 @@ accomodated by modifying the underlying class methods as needed.
 """
 
 setup(name='asciitable',
-      version='0.2.4',
+      version='0.2.5',
       description='Extensible ASCII table reader',
       long_description=long_description,
       author='Tom Aldcroft',
