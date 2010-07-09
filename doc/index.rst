@@ -138,7 +138,7 @@ Commonly used parameters for ``read()``
 **comment** : regular expression defining a comment line in table
   If the ``comment`` regular expression matches the beginning of a table line then that line
   will be discarded from header or data processing.  For the :class:`~asciitable.Basic` Reader this
-  defaults to "\s*#" (any whitespace followed by #).  
+  defaults to "\\s*#" (any whitespace followed by #).  
 
 **quotechar** : one-character string to quote fields containing special characters
   This specifies the quote character and will typically be either the single or double
