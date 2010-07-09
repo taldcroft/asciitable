@@ -1,5 +1,8 @@
 """ An extensible ASCII table reader.
 
+:Copyright: Smithsonian Astrophysical Observatory (2009)
+:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+"""
 ## Copyright (c) 2009, Smithsonian Astrophysical Observatory
 ## All rights reserved.
 ## 
@@ -25,9 +28,6 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-:Copyright: Smithsonian Astrophysical Observatory (2009)
-:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
-"""
 import os
 import sys
 import re
@@ -52,7 +52,15 @@ class Keyword(object):
         self.comment = comment
 
 class Column(object):
-    """Table column"""
+    """Table column.
+
+    The key attributes of a Column object are:
+
+    * **name** : column name
+    * **index** : column index (first column has index=0, second has index=1, etc)
+    * **str_vals** : list of column values as strings
+    * **data** : list of converted column values
+    """
     def __init__(self, name, index):
         self.name = name
         self.index = index
@@ -575,6 +583,7 @@ def read(table, numpy=True, **kwargs):
     of column objects using plain python lists to hold the data.  Most of the
     default behavior for various parameters is determined by the Reader class.
 
+    :param table: input table (file name, list of strings, or single newline-separated string)
     :param numpy: use the :class:`NumpyOutputter` class else use :class:`BaseOutputter` (default=True)
     :param Reader: Reader class (default= :class:`~asciitable.BasicReader` )
     :param Inputter: Inputter class
@@ -752,6 +761,9 @@ class Tab(BasicReader):
         # Don't strip line whitespace since that includes tabs
         self.header.splitter.process_line = None  
         self.data.splitter.process_line = None
+        # Don't strip data value whitespace since that is significant in TSV tables
+        self.data.splitter.process_val = None
+        self.data.splitter.skipinitialspace = False
 
 TabReader = Tab
 
