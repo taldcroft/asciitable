@@ -3,3 +3,4 @@ dist/
 *~
 *.pyc
 MANIFEST
+genfromtext.api

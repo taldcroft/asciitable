@@ -347,11 +347,18 @@ class _DictLikeNumpy(dict):
     class Dtype(object):
         pass
     dtype = Dtype()
+
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item + '')
+        except TypeError:
+            return [dict.__getitem__(self, x)[item] for x in self.dtype.names]
+
     def field(self, colname):
-        return self[colname].data
+        return self[colname]
 
     def __len__(self):
-        return len(self.values()[0].data)
+        return len(self.values()[0])
 
         
 class BaseOutputter(object):
@@ -365,7 +372,7 @@ class BaseOutputter(object):
 
     def __call__(self, cols):
         self._convert_vals(cols)
-        table = _DictLikeNumpy((x.name, x) for x in cols)
+        table = _DictLikeNumpy((x.name, x.data) for x in cols)
         table.dtype.names = tuple(x.name for x in cols)
         return table
 
@@ -490,7 +497,8 @@ class BaseReader(object):
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
 
-        return self.outputter(cols)
+        self.table = self.outputter(cols)
+        return self.table
 
     @property
     def comment_lines(self):
@@ -829,7 +837,8 @@ class Daophot(BaseReader):
         for line in headerkeywords:
             self.keywords.append(Keyword(line['keyword'], line['value'], 
                                          units = line['unit'], format=line['format']))
-        return output
+        self.table = output
+        return self.table
 
 DaophotReader = Daophot
 
@@ -1096,4 +1105,3 @@ class IpacData(BaseData):
     """IPAC table data reader"""
     splitter_class = FixedWidthSplitter
     comment = r'[|\\]'
-    
