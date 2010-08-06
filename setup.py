@@ -1,4 +1,5 @@
 from distutils.core import setup
+import os
 
 long_description = """
 At the top level **asciitable** looks like many other ASCII table readers since
@@ -22,8 +23,10 @@ accomodated by modifying the underlying class methods as needed.
 
 """
 
+version = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
+
 setup(name='asciitable',
-      version='0.2.5',
+      version=version,
       description='Extensible ASCII table reader',
       long_description=long_description,
       author='Tom Aldcroft',

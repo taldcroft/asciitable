@@ -85,6 +85,23 @@ opt = {
     "t/no_data_with_header": {},
     }    
 
+def test_daophot_header_keywords():
+    reader = asciitable.get_reader(Reader=asciitable.DaophotReader)
+    table = reader.read('t/daophot.dat')
+    expected_keywords = (('NSTARFILE', 'test.nst.1', 'filename', '%-23s'),
+                         ('REJFILE', 'hello world', 'filename', '%-23s'),
+                         ('SCALE', '1.',  'units/pix', '%-23.7g'),)
+
+    for name, value, units, format_ in expected_keywords:
+        for keyword in reader.keywords:
+            if keyword.name == name:
+                assert_equal(keyword.value, value)
+                assert_equal(keyword.units, units)
+                assert_equal(keyword.format, format_)
+                break
+        else:
+            raise ValueError('Keyword not found')
+
 def test_read_all_files_numpy():
     for f in glob.glob('t/*'):
         if f in cols:

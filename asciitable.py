@@ -45,11 +45,12 @@ class InconsistentTableError(Exception):
 
 class Keyword(object):
     """Table keyword"""
-    def __init__(self, name, value, units=None, comment=None):
+    def __init__(self, name, value, units=None, comment=None, format=None):
         self.name = name
         self.value = value
         self.units = units
         self.comment = comment
+        self.format = format
 
 class Column(object):
     """Table column.
@@ -787,15 +788,29 @@ class Daophot(BaseReader):
     """Read a DAOphot file.
     Example::
 
-      #K MERGERAD   = INDEF                   scaleunit  %-23.7g  #
+      #K MERGERAD   = INDEF                   scaleunit  %-23.7g  
+      #K IRAF = NOAO/IRAFV2.10EXPORT version %-23s
+      #K USER = davis name %-23s
+      #K HOST = tucana computer %-23s
+      #
       #N ID    XCENTER   YCENTER   MAG         MERR          MSKY           NITER    \\
       #U ##    pixels    pixels    magnitudes  magnitudes    counts         ##       \\
-      #F %-9d  %-10.3f   %-10.3f   %-12.3f     %-14.3f       %-15.7g        %-6d     #
+      #F %-9d  %-10.3f   %-10.3f   %-12.3f     %-14.3f       %-15.7g        %-6d     
+      #
       #N         SHARPNESS   CHI         PIER  PERROR                                \\
       #U         ##          ##          ##    perrors                               \\
-      #F         %-23.3f     %-12.3f     %-6d  %-13s                                 #
+      #F         %-23.3f     %-12.3f     %-6d  %-13s
+      #
       14       138.538   256.405   15.461      0.003         34.85955       4        \\
       -0.032      0.802       0     No_error
+
+    The keywords defined in the #K records are available via the Daophot reader object::
+
+      reader = asciitable.get_reader(Reader=asciitable.DaophotReader)
+      data = reader.read('t/daophot.dat')
+      for keyword in reader.keywords:
+          print keyword.name, keyword.value, keyword.units, keyword.format
+    
     """
     
     def __init__(self):
@@ -805,11 +820,24 @@ class Daophot(BaseReader):
         self.data.splitter.delimiter = ' '
         self.data.start_line = 0
         self.data.comment = r'\s*#'
+    
+    def read(self, table):
+        output = BaseReader.read(self, table)
+        headerkeywords = read(self.comment_lines, comment=r'(?!#K)', Reader=NoHeaderReader,
+                              names = ['temp1','keyword','temp2','value','unit','format'])
+
+        for line in headerkeywords:
+            self.keywords.append(Keyword(line['keyword'], line['value'], 
+                                         units = line['unit'], format=line['format']))
+        return output
 
 DaophotReader = Daophot
 
 class DaophotHeader(BaseHeader):
     """Read the header from a file produced by the IRAF DAOphot routine."""
+    def __init__(self):
+        BaseHeader.__init__(self)
+        self.comment = r'\s*#K'
 
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a DAOphot

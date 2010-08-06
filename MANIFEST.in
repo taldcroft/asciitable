@@ -2,3 +2,5 @@ include t/*
 include test.py
 include doc/*.rst
 include CHANGES
+include VERSION
+global-exclude *~
