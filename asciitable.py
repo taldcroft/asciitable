@@ -360,6 +360,19 @@ class _DictLikeNumpy(dict):
     def __len__(self):
         return len(self.values()[0])
 
+    def __iter__(self):
+        self.__index = 0
+        return self
+
+    def next(self):
+        try:
+            vals = [dict.__getitem__(self, x)[self.__index] for x in self.dtype.names]
+        except IndexError:
+            raise StopIteration
+        else:
+            self.__index += 1
+            return vals
+
         
 class BaseOutputter(object):
     """Output table as a dict of column objects keyed on column name.  The
@@ -1105,3 +1118,143 @@ class IpacData(BaseData):
     """IPAC table data reader"""
     splitter_class = FixedWidthSplitter
     comment = r'[|\\]'
+    
+class Memory(BaseReader):
+    """Read a table from a data object in memory"""
+    def __init__(self):
+        self.header = MemoryHeader()
+        self.data = MemoryData()
+        self.inputter = MemoryInputter()
+        self.outputter = BaseOutputter()
+        self.meta = {}                  # Placeholder for storing table metadata 
+        self.keywords = []              # Table Keywords
+
+    def read(self, table):
+        self.data.header = self.header
+        self.header.data = self.data
+
+        self.lines = self.inputter.get_lines(table, self.header.names)
+        self.data.get_data_lines(self.lines)
+        self.header.get_cols(self.lines)
+        cols = self.header.cols         # header.cols corresponds to *output* columns requested
+        n_data_cols = len(self.header.names) # header.names corresponds to *all* header columns in table
+        self.data.splitter.cols = cols
+
+        for i, str_vals in enumerate(self.data.get_str_vals()):
+            if len(str_vals) != n_data_cols:
+                errmsg = ('Number of header columns (%d) inconsistent with '
+                          'data columns (%d) at data line %d\n'
+                          'Header values: %s\n'
+                          'Data values: %s' % (len(cols), len(str_vals), i,
+                                               [x.name for x in cols], str_vals))
+                raise InconsistentTableError(errmsg)
+
+            for col in cols:
+                col.str_vals.append(str_vals[col.index])
+
+        self.cols = cols
+        if hasattr(table, 'keywords'):
+            self.keywords = table.keywords
+
+        self.outputter.default_converter = lambda vals: vals
+        self.table = self.outputter(cols)
+
+        return self.table
+
+class MemoryInputter(BaseInputter):
+    """Get the lines from the table input and return an iterable object that contains the data lines.
+
+    The input table can be one of:
+
+    * asciitable Reader object
+    * NumPy structured array
+    * List of lists
+    * Dict of lists
+    """
+    def get_lines(self, table, names):
+        """Get the lines from the ``table`` input.
+        
+        :param table: table input
+        :param names: list of column names (only used for dict of lists to set column order)
+        :returns: list of lines
+
+        """
+        try:  
+            # If table is dict-like this will return the first key.
+            # If table is list-like this will return the first row.
+            first_row_or_key = iter(table).next()
+        except TypeError:
+            # Not iterable, is it an asciitable Reader instance?
+            if isinstance(table, BaseReader):
+                lines = table.table
+            else:
+                raise TypeError('Input table must be iterable or else be a Reader object')
+        else:
+            # table is iterable, now see if it is dict-like or list-like
+            try:
+                table[first_row_or_key]
+            except (TypeError, IndexError):
+                lines = table
+            else:
+                lines = _DictLikeNumpy(table)
+                if names is None:
+                    lines.dtype.names = sorted(lines.keys())
+                else:
+                    lines.dtype.names = names
+
+        return lines
+
+class MemoryHeader(BaseHeader):
+    """Memory table header reader"""
+    def __init__(self):
+        pass
+
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+
+        Based on the previously set Header attributes find or create the column names.
+        Sets ``self.cols`` with the list of Columns.  This list only includes the actual
+        requested columns after filtering by the include_names and exclude_names
+        attributes.  See ``self.names`` for the full list.
+
+        :param lines: list of table lines
+        :returns: list of table Columns
+        """
+
+        if self.names is None:
+            # No column names supplied so first try to get them from NumPy structured array
+            try:
+                self.names = lines.dtype.names
+            except AttributeError:
+                # Still no col names available so auto-generate them
+                try:
+                    first_data_vals = iter(lines).next()
+                except StopIteration:
+                    raise InconsistentTableError('No data lines found so cannot autogenerate column names')
+                n_data_cols = len(first_data_vals)
+                self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
+
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+
+class MemorySplitter(BaseSplitter):
+    """Splitter for data already in memory.  It is assumed that ``lines`` are
+    iterable and that each line (aka row) is also an iterable object that
+    provides the column values for that row."""
+    def __call__(self, lines):
+        for vals in lines:
+            yield vals
+
+class MemoryData(BaseData):
+    """Memory table data reader.  Same as the BaseData reader but with a
+    special splitter and a "pass-thru" process_lines function."""
+
+    splitter_class = MemorySplitter
+
+    def process_lines(self, lines):
+        return lines

@@ -119,7 +119,7 @@ def test_read_all_files_list():
             table = asciitable.read(f, numpy=False, **options)
             assert_equal(set(table.keys()), set(cols[f]))
             for colval in table.values():
-                assert_equal(len(colval.data), nrows[f])
+                assert_equal(len(colval), nrows[f])
 
 @raises(asciitable.InconsistentTableError)
 def test_empty_table_no_header():
