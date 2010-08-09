@@ -1,6 +1,6 @@
 import re
 import glob
-# from nose.tools import *
+from nose.tools import *
 
 import asciitable
 try:
