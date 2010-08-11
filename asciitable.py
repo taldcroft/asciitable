@@ -33,6 +33,7 @@ import sys
 import re
 import csv
 import itertools
+import cStringIO
 
 try:
     import numpy
@@ -182,6 +183,10 @@ class DefaultSplitter(BaseSplitter):
     quoting = csv.QUOTE_MINIMAL
     skipinitialspace = True
     
+    def __init__(self):
+        self.csv_writer = None
+        self.csv_writer_out = cStringIO.StringIO()
+
     def __call__(self, lines):
         """Return an iterator over the table ``lines``, where each iterator output
         is a list of the split line values.
@@ -206,6 +211,28 @@ class DefaultSplitter(BaseSplitter):
             else:
                 yield vals
             
+    def join(self, vals):
+        if self.delimiter is None:
+            delimiter = ' '
+        else:
+            delimiter = self.delimiter
+
+        if self.csv_writer is None:
+            self.csv_writer = csv.writer(self.csv_writer_out,
+                                         delimiter = self.delimiter,
+                                         doublequote = self.doublequote,
+                                         escapechar = self.escapechar,
+                                         quotechar = self.quotechar,
+                                         quoting = self.quoting,
+                                         lineterminator = '',
+                                         )
+        self.csv_writer_out.seek(0)
+        self.csv_writer_out.truncate()
+        self.csv_writer.writerow(vals)        
+
+        return self.csv_writer_out.getvalue()
+    
+
 
 def _get_line_index(line_or_func, lines):
     if hasattr(line_or_func, '__call__'):
@@ -287,12 +314,12 @@ class BaseHeader(object):
             if line and not self.comment or not re_comment.match(line):
                 yield line
 
-    def write(self, fh, table):
+    def write(self, lines, table):
         if self.start_line is not None:
             for i, spacer_line in zip(range(self.start_line),
                                        itertools.cycle(self.write_spacer_lines)):
-                print >> fh, spacer_line
-            print >> fh, self.splitter.join([x.name for x in table.cols])
+                lines.append(spacer_line)
+            lines.append(self.splitter.join([x.name for x in table.cols]))
 
 
 class BaseData(object):
@@ -308,6 +335,8 @@ class BaseData(object):
     comment = None
     splitter_class = DefaultSplitter
     write_spacer_lines = ['ASCIITABLE_WRITE_SPACER_LINE']
+    formats = {}
+    default_formatter = str
     
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
@@ -352,38 +381,46 @@ class BaseData(object):
                     col.str_vals[i] = self.fill_values[str_val]
                     col.mask[i] = True
 
-    def write(self, fh, table):
-        if self.start_line is None:
-            data_start_line = 0
-        elif hasattr(self.start_line, '__call__'):
+    def write(self, lines, table):
+        if hasattr(self.start_line, '__call__'):
             raise TypeError('Start_line attribute cannot be callable for write()')
         else:
-            data_start_line = self.start_line
+            data_start_line = self.start_line or 0
 
-        if self.header.start_line is None:
-            header_start_line = -1
-        else:
-            header_start_line = self.header.start_line
+        while len(lines) < data_start_line:
+            lines.append(itertools.cycle(self.write_spacer_lines))
 
-        n_spacer_lines = data_start_line - (header_start_line + 1)
-        if n_spacer_lines < 0:
-            raise ValueError('Number of spacer lines for write is negative: {0}'.format(
-                n_spacer_lines))
-
-        for i, spacer_line in zip(range(n_spacer_lines),
-                                  itertools.cycle(self.write_spacer_lines)):
-            print >> fh, spacer_line
-        
+        formatters = []
+        for col in table.cols:
+            formatter = self.formats.get(col.name, self.default_formatter)
+            if not hasattr(formatter, '__call__'):
+                formatter = _format_func(formatter)
+            formatters.append(formatter)
+            
         for vals in table.table:
-            print >> fh, self.splitter.join(str(x) for x in vals)
+            lines.append(self.splitter.join([formatter(val) for formatter, val in
+                                             itertools.izip(formatters, vals)]))
+
+def _format_func(format_str):
+    def func(val):
+        return format_str % val
+    return func
 
 class _DictLikeNumpy(dict):
     """Provide minimal compatibility with numpy rec array API for BaseOutputter
     object::
       
       table = asciitable.read('mytable.dat', numpy=False)
-      table.field('x')    # access column 'x'
+      table.field('x')    # List of elements in column 'x'
       table.dtype.names   # get column names in order
+      table[1]            # returns row 1 as a list
+      table[1][2]         # 3nd column in row 1
+      table['col1'][1]    # Row 1 in column col1
+      for row_vals in table:  # iterate over table rows
+          print row_vals  # print list of vals in each row
+
+    To do: - add colnames property to set colnames and dtype.names as well.
+           - ordered dict?
     """
     class Dtype(object):
         pass
@@ -407,7 +444,7 @@ class _DictLikeNumpy(dict):
 
     def next(self):
         try:
-            vals = [dict.__getitem__(self, x)[self.__index] for x in self.dtype.names]
+            vals = self[self.__index]
         except IndexError:
             raise StopIteration
         else:
@@ -415,14 +452,34 @@ class _DictLikeNumpy(dict):
             return vals
 
         
+def convert_list(python_type):
+    """Return a function that converts a list into a list of the given
+    ``python_type``.  This argument is a function that takes a single
+    argument and returns a single value of the desired type.  In general
+    this will be one of ``int``, ``float`` or ``str``.
+    """
+    def converter(vals):
+        return [python_type(x) for x in vals]
+    return converter
+
+def convert_numpy(numpy_type):
+    """Return a function that converts a list into a numpy array of the given
+    ``numpy_type``.  This type must be a valid `numpy type
+    <http://docs.scipy.org/doc/numpy/user/basics.types.html>`_, e.g.  numpy.int,
+    numpy.uint, numpy.int8, numpy.int64, numpy.float, numpy.float64, numpy.str.
+    """
+    def converter(vals):
+        return numpy.array(vals, numpy_type)
+    return converter
+
 class BaseOutputter(object):
     """Output table as a dict of column objects keyed on column name.  The
     table data are stored as plain python lists within the column objects.
     """
     converters = {}
-    default_converter = [lambda vals: [int(x) for x in vals],
-                         lambda vals: [float(x) for x in vals],
-                         lambda vals: vals]
+    default_converter = [convert_list(int),
+                         convert_list(float),
+                         convert_list(str)]
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -447,22 +504,13 @@ class BaseOutputter(object):
                 except IndexError:
                     raise ValueError('Column {0} failed to convert'.format(col.name))
 
-def convert_numpy(numpy_type):
-    """Return a function that converts a list into a numpy array of the given
-    ``numpy_type``.  This type must be a string corresponding to a numpy type,
-    example 'int64' or 'str' or 'float32'.
-    """
-    def converter(vals):
-        return numpy.array(vals, getattr(numpy, numpy_type))
-    return converter
-
 class NumpyOutputter(BaseOutputter):
     """Output the table as a numpy.rec.recarray
 
     :param default_converter: default list of functions tried (in order) to convert a column
     """
 
-    coming_soon = """Missing or bad data values are handled at two levels.  The first is in
+    coming_someday = """Missing or bad data values are handled at two levels.  The first is in
     the data reading step where if ``data.fill_values`` is set then any
     occurences of a bad value are replaced by the correspond fill value.
     At the same time a boolean list ``mask`` is created in the column object.
@@ -486,9 +534,10 @@ class NumpyOutputter(BaseOutputter):
 
     auto_masked_array = True
     default_masked_array = False
-    default_converter = [convert_numpy('int'),
-                         convert_numpy('float'),
-                         convert_numpy('str')]
+
+    default_converter = [convert_numpy(numpy.int),
+                         convert_numpy(numpy.float),
+                         convert_numpy(numpy.str)]
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -568,11 +617,21 @@ class BaseReader(object):
             comment_lines = []
         return comment_lines
 
-    def write(self, fh, table=None):
+    def write(self, table=None):
+        """Write ``table`` as list of strings.
+
+        :param table: asciitable Reader object
+        :returns: list of strings corresponding to ASCII table
+        """
         if table is None:
             table = self
-        table.header.write(fh, table)
-        table.data.write(fh, table)
+
+        # Write header and data to lines list 
+        lines = []
+        self.header.write(lines, table)
+        self.data.write(lines, table)
+
+        return lines
 
 extra_reader_pars = ('Reader', 'Inputter', 'Outputter', 
                      'delimiter', 'comment', 'quotechar', 'header_start',
@@ -689,18 +748,18 @@ def read(table, numpy=True, **kwargs):
     reader = get_reader(**new_kwargs)
     return reader.read(table)
 
-extra_writer_pars = ('Writer', 'delimiter', 'comment', 'quotechar', 'converters',
+extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
                      'names', 'include_names', 'exclude_names')
 
 def get_writer(Writer=None, **kwargs):
     """Initialize a table writer allowing for common customizations.  Most of the
     default behavior for various parameters is determined by the Writer class.
 
-    :param Writer: Writer class (default= :class:`BasicReader`)
+    :param Writer: Writer class (default= :class:`~asciitable.Basic` )
     :param delimiter: column delimiter string
-    :param comment: regular expression defining a comment line in table
+    :param write_comment: string defining a comment line in table
     :param quotechar: one-character string to quote fields containing special characters
-    :param converters: dict of converters
+    :param formats: dict of format specifiers or formatting functions
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
@@ -716,14 +775,14 @@ def get_writer(Writer=None, **kwargs):
     if 'delimiter' in kwargs:
         writer.header.splitter.delimiter = kwargs['delimiter']
         writer.data.splitter.delimiter = kwargs['delimiter']
-    if 'comment' in kwargs:
-        writer.header.comment = kwargs['comment']
-        writer.data.comment = kwargs['comment']
+    if 'write_comment' in kwargs:
+        writer.header.write_comment = kwargs['write_comment']
+        writer.data.write_comment = kwargs['write_comment']
     if 'quotechar' in kwargs:
         writer.header.splitter.quotechar = kwargs['quotechar']
         writer.data.splitter.quotechar = kwargs['quotechar']
-    if 'converters' in kwargs:
-        writer.outputter.converters = kwargs['converters']
+    if 'formats' in kwargs:
+        writer.data.formats = kwargs['formats']
     if 'names' in kwargs:
         writer.header.names = kwargs['names']
     if 'include_names' in kwargs:
@@ -733,16 +792,17 @@ def get_writer(Writer=None, **kwargs):
 
     return writer
 
-def write(filename, table,  **kwargs):
+def write(table, output,  Writer=None, **kwargs):
     """Write the input ``table`` to ``filename``.  Most of the default behavior
     for various parameters is determined by the Writer class.
 
-    :param table: input table (Reader object, NumPy struct array, etc)
-    :param Writer: Writer class (default= :class:`~asciitable.BasicWriter` )
+    :param table: input table (Reader object, NumPy struct array, list of lists, etc)
+    :param output: output (filename, file-like object)
+    :param Writer: Writer class (default= :class:`~asciitable.Basic` )
     :param delimiter: column delimiter string
-    :param comment: regular expression defining a comment line in table
+    :param write_comment: string defining a comment line in table
     :param quotechar: one-character string to quote fields containing special characters
-    :param converters: dict of converters
+    :param formats: dict of format specifiers or formatting functions
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
@@ -752,17 +812,26 @@ def write(filename, table,  **kwargs):
     if bad_args:
         raise ValueError('Supplied arg(s) {0} not allowed for get_writer()'.format(bad_args))
 
-    if not isinstance(table, BaseReader) or any(x in kwargs for x in ('names', 'include_names', 
-                                                                      'exclude_names')):
-        reader = get_reader(Reader=Memory, **kwargs)
+    reader_kwargs = dict((key, val) for key, val in kwargs.items()
+                         if key in ('names', 'include_names', 'exclude_names'))
+    if not isinstance(table, BaseReader) or reader_kwargs:
+        reader = get_reader(Reader=Memory, **reader_kwargs)
         reader.read(table)
         table = reader
 
-    writer = get_writer(**kwargs)
-    # fh = open(filename, 'w')
-    fh = sys.stdout
-    writer.write(fh, table)
-    # close(fh)
+    writer = get_writer(Writer=Writer, **kwargs)
+    lines = writer.write(table)
+
+    # Write the lines to output 
+    outstr = os.linesep.join(lines)
+    if not hasattr(output, 'write'):
+        output = open(output, 'w')
+        output.write(outstr)
+        output.write(os.linesep)
+        output.close()
+    else:
+        output.write(outstr)
+        output.write(os.linesep)
 
 ############################################################################################################
 ############################################################################################################
@@ -805,7 +874,9 @@ class Basic(BaseReader):
         self.header.start_line = 0
         self.data.start_line = 1
         self.header.comment = r'\s*#'
+        self.header.write_comment = '# '
         self.data.comment = r'\s*#'
+        self.data.write_comment = '# '
 
 BasicReader = Basic
 
@@ -868,6 +939,9 @@ class CommentedHeaderHeader(BaseHeader):
             if match:
                 yield line[match.end():]
 
+    def write(self, lines, table):
+        lines.append(self.write_comment + self.splitter.join([x.name for x in table.cols]))
+
 class CommentedHeader(BaseReader):
     """Read a file where the column names are given in a line that begins with the
     header comment character.  The default delimiter is the <space> character.::
@@ -885,7 +959,9 @@ class CommentedHeader(BaseReader):
         self.header.start_line = 0
         self.data.start_line = 0
         self.header.comment = r'\s*#'
+        self.header.write_comment = '# '
         self.data.comment = r'\s*#'
+        self.data.write_comment = '# '
 
 CommentedHeaderReader = CommentedHeader
 
@@ -925,17 +1001,13 @@ class Rdb(TabReader):
     """
     def __init__(self):
         TabReader.__init__(self)
+        self.header = RdbHeader()
+        self.header.start_line = 0
+        self.header.comment = r'\s*#'
+        self.header.write_comment = '# '
+        self.header.splitter.delimiter = '\t'
+        self.header.splitter.process_line = None  
         self.data.start_line = 2
-
-    def write(self, fh, table=None):
-        if table is None:
-            table = self
-
-        self.data.header = self.header
-
-        self.header.write(fh, table)
-        self.data.write_spacer_lines = [self.data.splitter.join(['S'] * len(table.cols))]
-        self.data.write(fh, table)
 
 RdbReader = Rdb
 
@@ -988,6 +1060,9 @@ class Daophot(BaseReader):
         self.cols = self.header.cols
 
         return self.table
+
+    def write(self, table=None):
+        raise NotImplementedError
 
 DaophotReader = Daophot
 
@@ -1146,6 +1221,9 @@ class Cds(BaseReader):
         self.header = CdsHeader()
         self.data = CdsData()
 
+    def write(self, table=None):
+        raise NotImplementedError
+
 CdsReader = Cds
 
 class Ipac(BaseReader):
@@ -1179,6 +1257,9 @@ class Ipac(BaseReader):
         BaseReader.__init__(self)
         self.header = IpacHeader()
         self.data = IpacData()
+
+    def write(self, table=None):
+        raise NotImplementedError
 
 IpacReader = Ipac
 
@@ -1298,6 +1379,9 @@ class Memory(BaseReader):
 
         return self.table
 
+    def write(self, table=None):
+        raise NotImplementedError
+
 class MemoryInputter(BaseInputter):
     """Get the lines from the table input and return an iterable object that contains the data lines.
 
@@ -1395,3 +1479,9 @@ class MemoryData(BaseData):
 
     def process_lines(self, lines):
         return lines
+
+class RdbHeader(BaseHeader):
+    def write(self, lines, table):
+        lines.append(self.splitter.join([x.name for x in table.cols]))
+        lines.append(self.splitter.join(['S' for x in table.cols]))
+

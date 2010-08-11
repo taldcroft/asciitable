@@ -1,8 +1,9 @@
 .. |read| replace:: :func:`~asciitable.read`
+.. |write| replace:: :func:`~asciitable.write`
 
 :mod:`asciitable`
 ======================
-An extensible ASCII table reader.
+An extensible ASCII table reader and writer.
 
 :mod:`Asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_:
 
@@ -11,6 +12,7 @@ An extensible ASCII table reader.
 * :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
 * :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
 * :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.Memory`: table already in memory (list of lists, dict of lists, etc)
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
 * :class:`~asciitable.Tab`: tab-separated values
@@ -22,6 +24,9 @@ formats.  Below the hood however :mod:`asciitable` is built on a modular and
 extensible class structure.  The basic functionality required for reading a table
 is largely broken into independent `base class elements`_ so that new formats
 can be accomodated by modifying the underlying class methods as needed.
+
+Using the same class structure and interface :mod:`asciitable` is also able to
+write ASCII tables in a variety of useful formats.
 
 :Copyright: Smithsonian Astrophysical Observatory (2010) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
@@ -80,7 +85,7 @@ This method is fine in the short term but you always have to make sure
 start doing much with Python you will have ``PYTHONPATH`` conflicts and things
 will get messy.
 
-Basic Usage with ``read()``
+Reading tables
 ----------------------------
 The majority of commonly encountered ASCII tables can be read with the |read|
 function using one of the `Extension Reader Classes`_ supplied with :mod:`asciitable`.  
@@ -193,26 +198,25 @@ of the reading process.  These will be discussed in the `Advanced Usage`_ sectio
 
 Converters
 -----------
+Base outputter
+^^^^^^^^^^^^^^
 
-Normally :mod:`asciitable` converts the raw string values from the table into
-numeric data types by trying to convert the values using the Python ``int`` and
+:mod:`Asciitable` converts the raw string values from the table into
+numeric data types by using converter functions such as the Python ``int`` and
 ``float`` functions.  For example ``int("5.0")`` will fail while float("5.0")
 will succeed and return 5.0 as a Python float.  The default set of converters
-is defined as such::
+for the :class:`~asciitable.BaseOutputter` class is defined as such::
 
-  default_converter = [lambda vals: [int(x) for x in vals],
-                       lambda vals: [float(x) for x in vals],
-                       lambda vals: vals]
+  default_converter = [asciitable.convert_list(int),
+                       asciitable.convert_list(float),
+                       asciitable.convert_list(str)]
 
-This is a list of lambda functions.  Each function takes as an argument a list
-of string values for a single column as read from the table.  It uses a list
-comprehension to apply the ``int`` or ``float`` function and return the result
-as a list.  The conversion code steps through each lambda function and tries to
+These take advantage of the :func:`~asciitable.convert_list` function which
+itself returns a function that will convert a list of values to the desired
+type.  The conversion code steps through each converter function and tries to
 call the function with a column of string values.  If it succeeds without
-throwing an exception then break out, but otherwise move on to the next
-conversion lambda function.  For the ``default_converter`` list there is a
-catch-all at the end and so a column that is neither ``int`` nor ``float`` is
-returned as ``string``.
+throwing an exception it will then break out, but otherwise move on to the next
+conversion function.
 
 Use the ``converters`` keyword argument in order to force a specific data type
 for a column.  This should be a dictionary with keys corresponding to the
@@ -220,26 +224,45 @@ column names.  Each dictionary value is a list similar to the
 ``default_converter``.  For example::
 
   # col1 is int, col2 is float, col3 is string
-  converters = dict(col1=[lambda vals: [int(x) for x in vals]],
-                    col2=[lambda vals: [float(x) for x in vals]],
-                    col3=[lambda vals: vals])
+  converters = {'col1': asciitable.convert_list(int),
+                'col2': asciitable.convert_list(float),
+                'col3': asciitable.convert_list(str)}
   read('file.dat', converters=converters)
 
-There is currently no easy way to have fine-grained control of the final NumPy
-data type, i.e. whether you get int8 versus int64 etc.
+Note that it is also possible to specify a list of converter functions that
+will be tried in order::
 
-Specifying the dictionary value as a list allows the choice of multiple 
-converters that will be tried in succession.  For convenience it is
-also possible to specify a converter without a list::
-
-  converters = dict(col1=[lambda vals: [int(x) for x in vals],
-                          lambda vals: vals],
-                    col2=lambda vals: [float(x) for x in vals],
-                    col3=lambda vals: vals)
+  converters = {'col1': [asciitable.convert_list(float),
+                         asciitable.convert_list(str)]}
   read('file.dat', converters=converters)
 
-Advanced Usage
---------------
+NumPy outputter
+^^^^^^^^^^^^^^^^
+
+If the ``numpy`` module is available then the
+:class:`~asciitable.NumpyOutputter` is selected by default.  In this case  the
+default converters are::
+
+    default_converter = [asciitable.convert_numpy(numpy.int),
+                         asciitable.convert_numpy(numpy.float),
+                         asciitable.convert_numpy(numpy.str)]
+
+These take advantage of the :func:`~asciitable.convert_numpy` function which
+returns a function that converts a list to a numpy array of the specified type.
+The type must be a valid `numpy type
+<http://docs.scipy.org/doc/numpy/user/basics.types.html>`_, for example
+``numpy.int``, ``numpy.uint``, ``numpy.int8``, ``numpy.int64``,
+``numpy.float``, ``numpy.float64``, ``numpy.str``.
+
+The converters for each column can be specified with the ``converters``
+keyword::
+
+  converters = {'col1': asciitable.convert_numpy(numpy.uint),
+                'col2': asciitable.convert_numpy(numpy.float32)}
+  read('file.dat', converters=converters)
+
+Advanced table reading
+--------------------------
 
 This section is not finished.  It will discuss ways of making custom reader
 functions and how to write custom ``Reader``, ``Splitter``, ``Inputter`` and
@@ -300,6 +323,115 @@ Examples
    rdb_reader.data.splitter.process_val = process_val
 
 
+Writing tables
+--------------
+
+:mod:`Asciitable` is able to write ASCII tables out to a file or file-like
+object using the same class structure and basic user interface as for reading
+tables.
+
+::
+
+    table = asciitable.get_reader(Reader=asciitable.Daophot)
+    data = table.read('t/daophot.dat')
+
+    asciitable.write('table.dat', table)
+    asciitable.write('table.dat', data)
+
+    asciitable.write('table.rdb', table, Writer=asciitable.Rdb, exclude_names=['CHI'] )
+    asciitable.write('table.rdb', table, Writer=asciitable.Tab )
+    asciitable.write('table.rdb', table, Writer=asciitable.NoHeader )
+    asciitable.write('table.rdb', table, Writer=asciitable.CommentedHeader )
+
+    table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
+    data = table.read('t/daophot.dat')
+    print type(data)
+    pprint.pprint(data)
+    asciitable.write('table.dat', table)
+    asciitable.write('table.dat', data)
+
+    data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
+    asciitable.write('table.dat', data)
+    asciitable.write('table.dat', data, names=['x', 'y', 'z'], exclude_names=['y'])
+
+    data = {'x': [1,2,3], 'y': [4, 5.2, 6.1], 'z': [8, 9, 'hello world']}
+    asciitable.write('table.rdb', data)
+
+
+The |write| function accepts a number of parameters that specify the detailed
+output table format.  Different Reader classes can define different defaults, so the
+descriptions below sometimes mention "typical" default values.  This refers to
+the :class:`~asciitable.Basic` reader and other similar Reader classes.
+
+Commonly used parameters for ``write()``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**output** : output specifier
+  There are two ways to specify the output for the write operation:
+
+  - Name of a file (string)
+  - 
+
+**table** : input table 
+  The are four possible formats for the data table that is to be written:
+
+  - :mod:`Asciitable` Reader object (returned by :func:`~asciitable.get_reader`)
+    which has been used to read a table
+  - Output from :func:`~asciitable.read`
+  - List of lists: e.g. ``[[2, 3], [4, 5], [6, 7]]`` (3 rows, 2 columns)
+  - Dict of lists: e.g. ``{'c1': [2, 3, 4], 'c2': [5, 6, 7]}`` (3 rows, 2 columns)
+
+**Writer** : Writer class (default= :class:`~asciitable.Basic`)
+  This specifies the top-level format of the ASCII table to be written, for
+  example if it is a basic character delimited table, fixed format table, or a
+  CDS-compatible table, etc.  The value of this parameter must be a Reader
+  class.  For basic usage this means one of the built-in `Extension Reader
+  Classes`_.  Note: Reader classes and Writer classes are synonymous, in other
+  words Reader classes can also write, but for historical reasons they are
+  called Reader classes.
+
+**delimiter** : column delimiter string
+  A one-character string used to separate fields which typically defaults to the space character.
+  Other common values might be "," or "|" or "\\t".
+
+**comment** : string defining a comment line in table
+  For the :class:`~asciitable.Basic` Reader this defaults to "#". 
+
+**converters**: dict of data type converters
+  See the `Converters`_ section for more information.
+
+**names**: list of names corresponding to each data column
+  Define the complete list of names for each data column.  This will override
+  names determined from the data table (if available).  If not supplied then
+  use names from the data table or auto-generated names.
+
+**include_names**: list of names to include in output
+  From the list of column names found from the data table or the ``names``
+  parameter, select for output only columns within this list.  If not supplied
+  then include all names.
+  
+**exclude_names**: list of names to exlude from output
+  Exclude these names from the list of output columns.  This is applied *after*
+  the ``include_names`` filtering.  If not specified then no columns are excluded.
+
+Basic table writing
+--------------------
+
+Examples::
+
+    table = asciitable.get_reader(Reader=asciitable.Daophot)
+    data = table.read('t/daophot.dat')
+
+
+    asciitable.write('junk.dat', table)
+    asciitable.write('junk.rdb', table, Writer=asciitable.Rdb )
+    asciitable.write('junk.tab', table, Writer=asciitable.Tab )
+    asciitable.write('junk.dat', table, Writer=asciitable.NoHeader )
+    asciitable.write('junk.dat', table, Writer=asciitable.CommentedHeader )
+    asciitable.write('junk.dat', table, exclude_names=['CHI'])
+
+    
+
 Base class elements
 ----------------------------
 
@@ -328,6 +460,12 @@ Functions
 .. autofunction:: read
 
 .. autofunction:: get_reader
+
+.. autofunction:: write
+
+.. autofunction:: get_writer
+
+.. autofunction:: convert_list
 
 .. autofunction:: convert_numpy
 
