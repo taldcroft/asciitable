@@ -5,7 +5,8 @@
 ======================
 An extensible ASCII table reader and writer.
 
-:mod:`Asciitable` can read a wide range of ASCII table formats via built-in `Extension Reader Classes`_:
+:mod:`Asciitable` can read and write a wide range of ASCII table formats via
+built-in `Extension Reader Classes`_:
 
 * :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
 * :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
@@ -17,16 +18,14 @@ An extensible ASCII table reader and writer.
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
 * :class:`~asciitable.Tab`: tab-separated values
 
-At the top level :mod:`asciitable` looks like many other ASCII table readers
-since it provides a default |read| function with a long list of parameters to
-accommodate the many variations possible in commonly encountered ASCII table
-formats.  Below the hood however :mod:`asciitable` is built on a modular and
-extensible class structure.  The basic functionality required for reading a table
-is largely broken into independent `base class elements`_ so that new formats
-can be accomodated by modifying the underlying class methods as needed.
-
-Using the same class structure and interface :mod:`asciitable` is also able to
-write ASCII tables in a variety of useful formats.
+At the top level :mod:`asciitable` looks like many other ASCII table interfaces
+since it provides default |read| and |write| functions with long lists of
+parameters to accommodate the many variations possible in commonly encountered
+ASCII table formats.  Below the hood however :mod:`asciitable` is built on a
+modular and extensible class structure.  The basic functionality required for
+reading or writing a table is largely broken into independent `base class
+elements`_ so that new formats can be accomodated by modifying the underlying
+class methods as needed.
 
 :Copyright: Smithsonian Astrophysical Observatory (2010) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
@@ -330,47 +329,68 @@ Writing tables
 object using the same class structure and basic user interface as for reading
 tables.
 
+Data from existing ASCII table (with NumPy)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ::
 
     table = asciitable.get_reader(Reader=asciitable.Daophot)
     data = table.read('t/daophot.dat')
 
-    asciitable.write('table.dat', table)
-    asciitable.write('table.dat', data)
+    print type(table)
+    print type(data)
 
-    asciitable.write('table.rdb', table, Writer=asciitable.Rdb, exclude_names=['CHI'] )
-    asciitable.write('table.rdb', table, Writer=asciitable.Tab )
-    asciitable.write('table.rdb', table, Writer=asciitable.NoHeader )
-    asciitable.write('table.rdb', table, Writer=asciitable.CommentedHeader )
+    asciitable.write(data, sys.stdout)
+    asciitable.write(table, "table.dat", Writer=asciitable.Tab )
+    asciitable.write(table, open("table.dat", "w"), Writer=asciitable.NoHeader )
+    asciitable.write(table, sys.stdout, Writer=asciitable.CommentedHeader )
+    asciitable.write(table, sys.stdout, Writer=asciitable.Rdb, exclude_names=['CHI'] )
+
+    asciitable.write(table, sys.stdout, formats={'XCENTER': '%12.1f',
+                                                 'YCENTER': lambda x: round(x, 1)},
+                                        include_names=['XCENTER', 'YCENTER'])
+
+Data from existing ASCII table (without NumPy)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
 
     table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
     data = table.read('t/daophot.dat')
+
     print type(data)
-    pprint.pprint(data)
-    asciitable.write('table.dat', table)
-    asciitable.write('table.dat', data)
+    print type(table)
+
+    asciitable.write(table, sys.stdout)
+    asciitable.write(data, sys.stdout)
+
+Data from a sequence of sequences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
 
     data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
     asciitable.write('table.dat', data)
     asciitable.write('table.dat', data, names=['x', 'y', 'z'], exclude_names=['y'])
 
+Data from a dict of sequences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
     data = {'x': [1,2,3], 'y': [4, 5.2, 6.1], 'z': [8, 9, 'hello world']}
     asciitable.write('table.rdb', data)
 
+
+Commonly used parameters for ``write()``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The |write| function accepts a number of parameters that specify the detailed
 output table format.  Different Reader classes can define different defaults, so the
 descriptions below sometimes mention "typical" default values.  This refers to
 the :class:`~asciitable.Basic` reader and other similar Reader classes.
 
-Commonly used parameters for ``write()``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 **output** : output specifier
   There are two ways to specify the output for the write operation:
 
   - Name of a file (string)
-  - 
+  - File-like object (from open(), StringIO, etc)
 
 **table** : input table 
   The are four possible formats for the data table that is to be written:
@@ -414,23 +434,6 @@ Commonly used parameters for ``write()``
   Exclude these names from the list of output columns.  This is applied *after*
   the ``include_names`` filtering.  If not specified then no columns are excluded.
 
-Basic table writing
---------------------
-
-Examples::
-
-    table = asciitable.get_reader(Reader=asciitable.Daophot)
-    data = table.read('t/daophot.dat')
-
-
-    asciitable.write('junk.dat', table)
-    asciitable.write('junk.rdb', table, Writer=asciitable.Rdb )
-    asciitable.write('junk.tab', table, Writer=asciitable.Tab )
-    asciitable.write('junk.dat', table, Writer=asciitable.NoHeader )
-    asciitable.write('junk.dat', table, Writer=asciitable.CommentedHeader )
-    asciitable.write('junk.dat', table, exclude_names=['CHI'])
-
-    
 
 Base class elements
 ----------------------------
