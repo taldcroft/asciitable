@@ -45,7 +45,7 @@ The latest release of the :mod:`asciitable` package is available in the
 
 The latest git repository version is available on github::
 
-  hg clone https://asciitable.googlecode.com/hg/ asciitable 
+  hg clone http://github.com/taldcroft/asciitable.git
 
 Installation
 --------------
