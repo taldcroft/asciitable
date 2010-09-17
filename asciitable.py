@@ -406,7 +406,7 @@ def _format_func(format_str):
         return format_str % val
     return func
 
-class _DictLikeNumpy(dict):
+class DictLikeNumpy(dict):
     """Provide minimal compatibility with numpy rec array API for BaseOutputter
     object::
       
@@ -419,9 +419,10 @@ class _DictLikeNumpy(dict):
       for row_vals in table:  # iterate over table rows
           print row_vals  # print list of vals in each row
 
-    To do: - add colnames property to set colnames and dtype.names as well.
-           - ordered dict?
     """
+    # To do: - add colnames property to set colnames and dtype.names as well.
+    # - ordered dict?
+
     class Dtype(object):
         pass
     dtype = Dtype()
@@ -483,7 +484,7 @@ class BaseOutputter(object):
 
     def __call__(self, cols):
         self._convert_vals(cols)
-        table = _DictLikeNumpy((x.name, x.data) for x in cols)
+        table = DictLikeNumpy((x.name, x.data) for x in cols)
         table.dtype.names = tuple(x.name for x in cols)
         return table
 
@@ -1337,7 +1338,36 @@ class IpacData(BaseData):
     comment = r'[|\\]'
     
 class Memory(BaseReader):
-    """Read a table from a data object in memory"""
+    """Read a table from a data object in memory.  Several input data formats are supported:
+
+    **Output of asciitable.read()**::
+
+      table = asciitable.get_reader(Reader=asciitable.Daophot)
+      data = table.read('t/daophot.dat')
+      mem_data_from_table = asciitable.read(table, Reader=asciitable.Memory)
+      mem_data_from_data = asciitable.read(data, Reader=asciitable.Memory)
+
+    **Numpy structured array**::
+
+      data = numpy.zeros((2,), dtype=('i4,f4,a10'), names=('c1','c2','c3'))
+      data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
+      mem_data = asciitable.read(data, Reader=asciitable.Memory)
+
+    **Sequence of sequences**::
+    
+      data = [[1, 2,   3      ],
+              [4, 5.2, 6.1    ],
+              [8, 9,   'hello']]
+      mem_data = asciitable.read(data, Reader=asciitable.Memory, names=('c1','c2','c3'))
+
+    **Dict of sequences**::
+
+      data = {'c1': [1, 2, 3],
+              'c2': [4, 5.2, 6.1],
+              'c3': [8, 9, 'hello']}
+      mem_data = asciitable.read(data, Reader=asciitable.Memory, names=('c1','c2','c3'))
+
+    """
     def __init__(self):
         self.header = MemoryHeader()
         self.data = MemoryData()
@@ -1380,6 +1410,7 @@ class Memory(BaseReader):
         return self.table
 
     def write(self, table=None):
+        """Not available for the Memory class (raises NotImplementedError)"""
         raise NotImplementedError
 
 class MemoryInputter(BaseInputter):
@@ -1417,7 +1448,7 @@ class MemoryInputter(BaseInputter):
             except (TypeError, IndexError):
                 lines = table
             else:
-                lines = _DictLikeNumpy(table)
+                lines = DictLikeNumpy(table)
                 if names is None:
                     lines.dtype.names = sorted(lines.keys())
                 else:

@@ -1,7 +1,8 @@
 .. |read| replace:: :func:`~asciitable.read`
 .. |write| replace:: :func:`~asciitable.write`
+.. _structured array: http://docs.scipy.org/doc/numpy/user/basics.rec.html
 
-:mod:`asciitable`
+Asciitable
 ======================
 An extensible ASCII table reader and writer.
 
@@ -42,7 +43,7 @@ The latest release of the :mod:`asciitable` package is available in the
 `<http://cxc.harvard.edu/contrib/asciitable/downloads>`_ directory as
 ``asciitable.tar.gz``.  Previous releases are also available there.
 
-The latest mercurial repository version is available on google code::
+The latest git repository version is available on github::
 
   hg clone https://asciitable.googlecode.com/hg/ asciitable 
 
@@ -185,7 +186,7 @@ Advanced parameters for ``read()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 |read| can accept a few more parameters that allow for code-level customization
-of the reading process.  These will be discussed in the `Advanced Usage`_ section.
+of the reading process.  These will be discussed in the `Advanced table reading`_ section.
 
 **data_Splitter**: Splitter class to split data columns
 
@@ -196,14 +197,16 @@ of the reading process.  These will be discussed in the `Advanced Usage`_ sectio
 **Outputter**: Outputter class
 
 Converters
------------
-Base outputter
 ^^^^^^^^^^^^^^
 
 :mod:`Asciitable` converts the raw string values from the table into
 numeric data types by using converter functions such as the Python ``int`` and
 ``float`` functions.  For example ``int("5.0")`` will fail while float("5.0")
-will succeed and return 5.0 as a Python float.  The default set of converters
+will succeed and return 5.0 as a Python float.  
+
+Without NumPy
++++++++++++++++++
+The default set of converters
 for the :class:`~asciitable.BaseOutputter` class is defined as such::
 
   default_converter = [asciitable.convert_list(int),
@@ -235,8 +238,8 @@ will be tried in order::
                          asciitable.convert_list(str)]}
   read('file.dat', converters=converters)
 
-NumPy outputter
-^^^^^^^^^^^^^^^^
+With NumPy
+++++++++++++++++
 
 If the ``numpy`` module is available then the
 :class:`~asciitable.NumpyOutputter` is selected by default.  In this case  the
@@ -261,7 +264,7 @@ keyword::
   read('file.dat', converters=converters)
 
 Advanced table reading
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This section is not finished.  It will discuss ways of making custom reader
 functions and how to write custom ``Reader``, ``Splitter``, ``Inputter`` and
@@ -269,7 +272,7 @@ functions and how to write custom ``Reader``, ``Splitter``, ``Inputter`` and
 code for the existing `Extension Reader Classes`_.
 
 Examples
-^^^^^^^^^^
++++++++++++++++
 **Define a custom reader functionally**
 ::
 
@@ -327,19 +330,43 @@ Writing tables
 
 :mod:`Asciitable` is able to write ASCII tables out to a file or file-like
 object using the same class structure and basic user interface as for reading
-tables.
+tables.  
 
-Data from existing ASCII table (with NumPy)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Input data formats
+^^^^^^^^^^^^^^^^^^^
+A number of data formats for the input table are supported:
+
+- `Existing ASCII table with metadata`_ (:class:`~asciitable.BaseReader` object)
+- `Data from asciitable.read()`_ (:class:`~asciitable.DictLikeNumpy` object)
+- `NumPy structured array`_ or record array
+- `Sequence of sequences`_ (row-oriented list of lists)
+- `Dict of sequences`_ (column oriented dictionary of lists)
+
+Existing ASCII table with metadata
++++++++++++++++++++++++++++++++++++
+
+The example below highlights that the :func:`~asciitable.get_reader` function
+returns a :class:`~asciitable.Reader` object that supports keywords and table
+metadata.  The :class:`~asciitable.Reader` object can then be an input to the
+:func:`~asciitable.write` function and allow for any associated metadata to be
+written.
+
+Note that in the current release there is no support for actually writing the 
+available keywords or other metadata, but the infrastructure is available and 
+this is the top priority for development.
+
 ::
 
+    # Get a Reader object
     table = asciitable.get_reader(Reader=asciitable.Daophot)
+
+    # Read a table from a file.  Return a NumPy record array object and also
+    # update column and metadata attributes in the "table" Reader object.
     data = table.read('t/daophot.dat')
 
-    print type(table)
-    print type(data)
-
-    asciitable.write(data, sys.stdout)
+    # Write the data in a variety of ways using as input both the NumPy record 
+    # array and the higher-level Reader object.
     asciitable.write(table, "table.dat", Writer=asciitable.Tab )
     asciitable.write(table, open("table.dat", "w"), Writer=asciitable.NoHeader )
     asciitable.write(table, sys.stdout, Writer=asciitable.CommentedHeader )
@@ -349,33 +376,64 @@ Data from existing ASCII table (with NumPy)
                                                  'YCENTER': lambda x: round(x, 1)},
                                         include_names=['XCENTER', 'YCENTER'])
 
-Data from existing ASCII table (without NumPy)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Data from asciitable.read()
++++++++++++++++++++++++++++++
+
+:mod:`Asciitable.read` returns a data object that can be an input to the
+|write| function.  If NumPy is available the default data
+object type is a NumPy record array.  However it is possible to use
+:mod:`asciitable` without NumPy in which case a :class:`~asciitable.DictLikeNumpy` 
+object is returned.  This object supports the most basic column and row indexing 
+API of a NumPy `structured array`_.  This object can be used as input to the |write| 
+function.
+
 ::
 
     table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
     data = table.read('t/daophot.dat')
 
-    print type(data)
-    print type(table)
-
-    asciitable.write(table, sys.stdout)
     asciitable.write(data, sys.stdout)
 
-Data from a sequence of sequences
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NumPy structured array
+++++++++++++++++++++++++
+
+A NumPy `structured array`_ (aka record array) can serve as input to the |write| function.
+
 ::
 
-    data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
+    data = numpy.zeros((2,), dtype=('i4,f4,a10'))
+    data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
+    asciitable.write(data, sys.stdout)
+
+Sequence of sequences
++++++++++++++++++++++++++
+
+A doubly-nested structure of iterable objects (e.g. lists or tuples) can serve as input to |write|.  
+The outer layer represents rows while the inner layer represents columns.
+
+::
+
+    data = [[1, 2,   3      ], 
+            [4, 5.2, 6.1    ], 
+            [8, 9,   'hello']]
     asciitable.write('table.dat', data)
     asciitable.write('table.dat', data, names=['x', 'y', 'z'], exclude_names=['y'])
 
-Data from a dict of sequences
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dict of sequences
++++++++++++++++++++++++
+
+A dictionary containing iterable objects can serve as input to |write|.  Each
+dict key is taken as the column name while the value must be an iterable object
+containing the corresponding column values.  Note the difference in output between
+this example and the previous example.
+
 ::
 
-    data = {'x': [1,2,3], 'y': [4, 5.2, 6.1], 'z': [8, 9, 'hello world']}
-    asciitable.write('table.rdb', data)
+    data = {'x': [1, 2, 3], 
+            'y': [4, 5.2, 6.1], 
+            'z': [8, 9, 'hello world']}
+    asciitable.write('table.dat', data)
 
 
 Commonly used parameters for ``write()``
@@ -393,11 +451,12 @@ the :class:`~asciitable.Basic` reader and other similar Reader classes.
   - File-like object (from open(), StringIO, etc)
 
 **table** : input table 
-  The are four possible formats for the data table that is to be written:
+  The are five possible formats for the data table that is to be written:
 
   - :mod:`Asciitable` Reader object (returned by :func:`~asciitable.get_reader`)
     which has been used to read a table
-  - Output from :func:`~asciitable.read`
+  - Output from :func:`~asciitable.read` (:class:`~asciitable.DictLikeNumpy`)
+  - NumPy `structured array`_ or record array
   - List of lists: e.g. ``[[2, 3], [4, 5], [6, 7]]`` (3 rows, 2 columns)
   - Dict of lists: e.g. ``{'c1': [2, 3, 4], 'c2': [5, 6, 7]}`` (3 rows, 2 columns)
 
@@ -417,8 +476,15 @@ the :class:`~asciitable.Basic` reader and other similar Reader classes.
 **comment** : string defining a comment line in table
   For the :class:`~asciitable.Basic` Reader this defaults to "#". 
 
-**converters**: dict of data type converters
-  See the `Converters`_ section for more information.
+**formats**: dict of data type converters
+  For each key (column name) use the given value to convert the column data to a string.  
+  If the format value is string-like then it is used as a Python format statement,
+  e.g. '%0.2f' % value.  If it is a callable function then that function
+  is called with a single argument containing the column value to be converted.
+  Example::
+
+    asciitable.write(table, sys.stdout, formats={'XCENTER': '%12.1f',
+                                                 'YCENTER': lambda x: round(x, 1)},
 
 **names**: list of names corresponding to each data column
   Define the complete list of names for each data column.  This will override
@@ -452,7 +518,7 @@ corresponding functionality.  In this way the large number of tweakable
 parameters is modularized into managable groups.  Where it makes sense these
 attributes are actually functions that make it easy to handle special cases.
 
-asciitable API
+Asciitable API
 ==============
 
 .. automodule:: asciitable
@@ -522,11 +588,13 @@ Core Classes
    :inherited-members:
    :undoc-members:
 
-.. autoclass:: InconsistentTableError
+.. autoclass:: DictLikeNumpy
    :show-inheritance:
    :members:
-   :inherited-members:
    :undoc-members:
+
+.. autoclass:: InconsistentTableError
+   :show-inheritance:
 
 .. autoclass:: NumpyOutputter
    :show-inheritance:
@@ -574,6 +642,11 @@ but idiosyncratic formats.
    :undoc-members:
 
 .. autoclass:: Ipac
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: Memory
    :show-inheritance:
    :members:
    :undoc-members:
@@ -637,10 +710,8 @@ These classes provide support for extension readers.
    :members:
    :undoc-members:
 
-Contents:
-
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
 Indices and tables
 ==================
