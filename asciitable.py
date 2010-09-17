@@ -1,9 +1,9 @@
 """ An extensible ASCII table reader.
 
-:Copyright: Smithsonian Astrophysical Observatory (2009)
+:Copyright: Smithsonian Astrophysical Observatory (2010)
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
 """
-## Copyright (c) 2009, Smithsonian Astrophysical Observatory
+## Copyright (c) 2010, Smithsonian Astrophysical Observatory
 ## All rights reserved.
 ## 
 ## Redistribution and use in source and binary forms, with or without
@@ -1349,7 +1349,7 @@ class Memory(BaseReader):
 
     **Numpy structured array**::
 
-      data = numpy.zeros((2,), dtype=('i4,f4,a10'), names=('c1','c2','c3'))
+      data = numpy.zeros((2,), dtype=[('col1','i4'), ('col2','f4'), ('col3', 'a10')])
       data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
       mem_data = asciitable.read(data, Reader=asciitable.Memory)
 
