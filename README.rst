@@ -16,7 +16,7 @@ Extension Reader Classes:
 * `Tab`: tab-separated values
 
 At the top level asciitable looks like many other ASCII table interfaces
-since it provides default |read| and |write| functions with long lists of
+since it provides default read() and write() functions with long lists of
 parameters to accommodate the many variations possible in commonly encountered
 ASCII table formats.  Below the hood however asciitable is built on a
 modular and extensible class structure.  The basic functionality required for
