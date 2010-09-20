@@ -536,9 +536,10 @@ class NumpyOutputter(BaseOutputter):
     auto_masked_array = True
     default_masked_array = False
 
-    default_converter = [convert_numpy(numpy.int),
-                         convert_numpy(numpy.float),
-                         convert_numpy(numpy.str)]
+    if has_numpy:
+        default_converter = [convert_numpy(numpy.int),
+                             convert_numpy(numpy.float),
+                             convert_numpy(numpy.str)]
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -1042,6 +1043,8 @@ class Daophot(BaseReader):
     """
     
     def __init__(self):
+        if not has_numpy:
+            raise NotImplementedError('Daophot reader requires NumPy')
         BaseReader.__init__(self)
         self.header = DaophotHeader()
         self.inputter = ContinuationLinesInputter()
@@ -1223,6 +1226,7 @@ class Cds(BaseReader):
         self.data = CdsData()
 
     def write(self, table=None):
+        """Not available for the Cds class (raises NotImplementedError)"""
         raise NotImplementedError
 
 CdsReader = Cds
@@ -1260,6 +1264,7 @@ class Ipac(BaseReader):
         self.data = IpacData()
 
     def write(self, table=None):
+        """Not available for the Ipac class (raises NotImplementedError)"""
         raise NotImplementedError
 
 IpacReader = Ipac

@@ -86,6 +86,8 @@ opt = {
     }    
 
 def test_daophot_header_keywords():
+    if not has_numpy:
+        return
     reader = asciitable.get_reader(Reader=asciitable.DaophotReader)
     table = reader.read('t/daophot.dat')
     expected_keywords = (('NSTARFILE', 'test.nst.1', 'filename', '%-23s'),
