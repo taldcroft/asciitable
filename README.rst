@@ -1,6 +1,6 @@
 asciitable
 ======================
-An extensible ASCII table reader and writer.
+An extensible ASCII table reader and writer for Python 2 and 3.
 
 Asciitable can read and write a wide range of ASCII table formats via built-in
 Extension Reader Classes:

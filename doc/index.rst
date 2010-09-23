@@ -4,7 +4,7 @@
 
 Asciitable
 ======================
-An extensible ASCII table reader and writer.
+An extensible ASCII table reader and writer for Python 2 and 3.
 
 :mod:`Asciitable` can read and write a wide range of ASCII table formats via
 built-in `Extension Reader Classes`_:
@@ -33,8 +33,9 @@ class methods as needed.
 
 Requirements
 ---------------
-* :mod:`asciitable` has been tested with Python 2.4, 2.5 and 2.6.  It might work with other versions.
-* Though not required `NumPy <http://numpy.scipy.org/>`_ is highly recommended.  Version 1.3.0 has been tested.
+* :mod:`asciitable` has been tested successfully with Python 2.4, 2.5, 2.6 and 3.1.
+* Though not required `NumPy <http://numpy.scipy.org/>`_ is recommended.  
+  NumPy versions 1.3.0 (Python 2) and 1.5.0 (Python 3) have been tested.
 
 Download
 ---------------------------
@@ -45,10 +46,10 @@ The latest release of the :mod:`asciitable` package is available in the
 
 The latest git repository version is available on github::
 
-  hg clone http://github.com/taldcroft/asciitable.git
+  git clone http://github.com/taldcroft/asciitable.git
 
-Installation
---------------
+Installation and test
+---------------------
 
 The :mod:`asciitable` package includes a single module that must be made
 available to the Python interpreter.  The first step is to untar the package
@@ -56,6 +57,12 @@ tarball and change into the source directory.  ::
 
   tar zxvf asciitable.tar.gz
   cd asciitable-<version>
+
+If you have the `nose <http://somethingaboutorange.com/mrl/projects/nose>`_ module 
+installed then at this point you can run the test suite::
+
+  nosetests    # Python 2
+  nosetests3   # Python 3
 
 There are several methods for installing.  Choose ONE of them.
 
@@ -84,6 +91,10 @@ This method is fine in the short term but you always have to make sure
 ``PYTHONPATH`` is set appropriately (perhaps in your ~/.cshrc file).  And if you
 start doing much with Python you will have ``PYTHONPATH`` conflicts and things
 will get messy.
+
+Testing
+--------------
+
 
 Reading tables
 ----------------------------
