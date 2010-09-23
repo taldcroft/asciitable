@@ -1,7 +1,10 @@
 import sys
 from nose.tools import *
 import asciitable
-import StringIO
+try:
+    import StringIO as io
+except ImportError:
+    import io
 
 test_defs = [
     dict(kwargs=dict(),
@@ -51,13 +54,14 @@ ID	XCENTER	YCENTER	MAG	MERR	MSKY	NITER	SHARPNESS	CHI	PIER	PERROR
     ]
 
 def check_write_table(test_def, table):
-    out = StringIO.StringIO()
+    out = io.StringIO()
     asciitable.write(table, out, **test_def['kwargs'])
-    print 'Expected:\n', test_def['out']
-    print 'Actual:\n', out.getvalue()
+    print('Expected:\n%s' % test_def['out'])
+    print('Actual:\n%s' % out.getvalue())
     if out.getvalue() != test_def['out']:
-        with open('out.dat', 'w') as f:
-            f.write(out.getvalue())
+        f = open('out.dat', 'w')
+        f.write(out.getvalue())
+        f.close()
     assert(out.getvalue() == test_def['out'])
 
 def test_write_table():

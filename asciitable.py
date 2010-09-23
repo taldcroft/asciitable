@@ -33,7 +33,6 @@ import sys
 import re
 import csv
 import itertools
-import cStringIO
 
 try:
     import numpy
@@ -43,6 +42,22 @@ except ImportError:
 
 class InconsistentTableError(Exception):
     pass
+
+# Python 3 compatibility tweaks.  Should work back through 2.4.
+try:
+    import cStringIO as io
+except ImportError:
+    import io
+
+try:
+    next
+except NameError:
+    next = lambda x: x.next()
+
+try:
+    izip = itertools.izip
+except AttributeError:
+    izip = zip
 
 class Keyword(object):
     """Table keyword"""
@@ -185,7 +200,7 @@ class DefaultSplitter(BaseSplitter):
     
     def __init__(self):
         self.csv_writer = None
-        self.csv_writer_out = cStringIO.StringIO()
+        self.csv_writer_out = io.StringIO()
 
     def __call__(self, lines):
         """Return an iterator over the table ``lines``, where each iterator output
@@ -281,7 +296,7 @@ class BaseHeader(object):
             if self.names is None:
                 # Get the data values from the first line of table data to determine n_data_cols
                 try:
-                    first_data_vals = self.data.get_str_vals().next()
+                    first_data_vals = next(self.data.get_str_vals())
                 except StopIteration:
                     raise InconsistentTableError('No data lines found so cannot autogenerate column names')
                 n_data_cols = len(first_data_vals)
@@ -295,7 +310,7 @@ class BaseHeader(object):
             else: # No header line matching
                 raise ValueError('No header line found in table')
 
-            self.names = self.splitter([line]).next()
+            self.names = next(self.splitter([line]))
         
         names = set(self.names)
         if self.include_names is not None:
@@ -316,7 +331,7 @@ class BaseHeader(object):
 
     def write(self, lines, table):
         if self.start_line is not None:
-            for i, spacer_line in zip(range(self.start_line),
+            for i, spacer_line in izip(range(self.start_line),
                                        itertools.cycle(self.write_spacer_lines)):
                 lines.append(spacer_line)
             lines.append(self.splitter.join([x.name for x in table.cols]))
@@ -399,7 +414,7 @@ class BaseData(object):
             
         for vals in table.table:
             lines.append(self.splitter.join([formatter(val) for formatter, val in
-                                             itertools.izip(formatters, vals)]))
+                                             izip(formatters, vals)]))
 
 def _format_func(format_str):
     def func(val):
@@ -441,13 +456,13 @@ class DictLikeNumpy(dict):
         return self[colname]
 
     def __len__(self):
-        return len(self.values()[0])
+        return len(list(self.values())[0])
 
     def __iter__(self):
         self.__index = 0
         return self
 
-    def next(self):
+    def __next__(self):
         try:
             vals = self[self.__index]
         except IndexError:
@@ -456,6 +471,8 @@ class DictLikeNumpy(dict):
             self.__index += 1
             return vals
 
+    def next(self):
+        return self.__next__()
         
 def convert_list(python_type):
     """Return a function that converts a list into a list of the given
@@ -1444,7 +1461,7 @@ class MemoryInputter(BaseInputter):
         try:  
             # If table is dict-like this will return the first key.
             # If table is list-like this will return the first row.
-            first_row_or_key = iter(table).next()
+            first_row_or_key = next(iter(table))
         except TypeError:
             # Not iterable, is it an asciitable Reader instance?
             if isinstance(table, BaseReader):
@@ -1490,7 +1507,7 @@ class MemoryHeader(BaseHeader):
             except AttributeError:
                 # Still no col names available so auto-generate them
                 try:
-                    first_data_vals = iter(lines).next()
+                    first_data_vals = next(iter(lines))
                 except StopIteration:
                     raise InconsistentTableError('No data lines found so cannot autogenerate column names')
                 n_data_cols = len(first_data_vals)

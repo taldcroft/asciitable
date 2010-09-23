@@ -43,5 +43,4 @@ setup(name='asciitable',
           'Topic :: Scientific/Engineering :: Physics',
           ],
       py_modules=['asciitable'],
-      use_2to3 = True,
       )

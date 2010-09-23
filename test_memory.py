@@ -34,7 +34,7 @@ def test_memory_from_LOL(numpy):
     data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
     mem_table = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy)
     mem_data = mem_table.read(data)
-    print mem_data.dtype.names
+    print(mem_data.dtype.names)
     assert(mem_data.dtype.names == ('col1', 'col2', 'col3'))
     if numpy:
         assert(mem_data[0][0] == 1)
@@ -52,7 +52,7 @@ def test_memory_from_LOL2(numpy):
     data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
     mem_table = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy, names=('c1','c2','c3'))
     mem_data = mem_table.read(data)
-    print mem_data.dtype.names
+    print(mem_data.dtype.names)
     assert(mem_data.dtype.names == ('c1', 'c2', 'c3'))
     if numpy:
         assert(mem_data[0][0] == 1)
