@@ -76,24 +76,3 @@ def test_write_table_no_numpy():
         yield check_write_table, test_def, table
         yield check_write_table, test_def, data
 
-##asciitable.write(data, sys.stdout)
-##asciitable.write(table, sys.stdout, formats={'XCENTER': '%12.1f',
-##                                             'YCENTER': lambda x: round(x, 1)},
-##                 include_names=['XCENTER', 'YCENTER'])
-
-##asciitable.write(table, sys.stdout, Writer=asciitable.Rdb, exclude_names=['CHI'] )
-##asciitable.write(table, sys.stdout, Writer=asciitable.Tab )
-##asciitable.write(table, sys.stdout, Writer=asciitable.NoHeader )
-##asciitable.write(table, sys.stdout, Writer=asciitable.CommentedHeader )
-
-##table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
-##data = table.read('t/daophot.dat')
-##asciitable.write(table, sys.stdout)
-##asciitable.write(data, sys.stdout)
-
-##data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
-##asciitable.write(data, sys.stdout)
-##asciitable.write(data, sys.stdout, names=['x', 'y', 'z'], exclude_names=['y'])
-
-##data = {'x': [1,2,3], 'y': [4, 5.2, 6.1], 'z': [8, 9, 'hello world']}
-##asciitable.write(data, sys.stdout)

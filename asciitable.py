@@ -406,6 +406,7 @@ def _format_func(format_str):
         return format_str % val
     return func
 
+
 class DictLikeNumpy(dict):
     """Provide minimal compatibility with numpy rec array API for BaseOutputter
     object::
@@ -425,7 +426,10 @@ class DictLikeNumpy(dict):
 
     class Dtype(object):
         pass
-    dtype = Dtype()
+
+    def __init__(self, *args, **kwargs):
+        self.dtype = DictLikeNumpy.Dtype()
+        dict.__init__(self, *args, **kwargs)
 
     def __getitem__(self, item):
         try:
@@ -1043,8 +1047,8 @@ class Daophot(BaseReader):
     """
     
     def __init__(self):
-        if not has_numpy:
-            raise NotImplementedError('Daophot reader requires NumPy')
+        #if not has_numpy:
+        #    raise NotImplementedError('Daophot reader requires NumPy')
         BaseReader.__init__(self)
         self.header = DaophotHeader()
         self.inputter = ContinuationLinesInputter()
@@ -1054,12 +1058,13 @@ class Daophot(BaseReader):
     
     def read(self, table):
         output = BaseReader.read(self, table)
-        headerkeywords = read(self.comment_lines, comment=r'(?!#K)', Reader=NoHeaderReader,
-                              names = ['temp1','keyword','temp2','value','unit','format'])
+        if has_numpy:
+            headerkeywords = read(self.comment_lines, comment=r'(?!#K)', Reader=NoHeaderReader,
+                                  names = ['temp1','keyword','temp2','value','unit','format'])
 
-        for line in headerkeywords:
-            self.keywords.append(Keyword(line['keyword'], line['value'], 
-                                         units = line['unit'], format=line['format']))
+            for line in headerkeywords:
+                self.keywords.append(Keyword(line['keyword'], line['value'], 
+                                             units=line['unit'], format=line['format']))
         self.table = output
         self.cols = self.header.cols
 

@@ -3,11 +3,9 @@ import glob
 from nose.tools import *
 
 import asciitable
-try:
+if asciitable.has_numpy:
     import numpy as np
-    has_numpy = True
-except ImportError:
-    has_numpy = False
+from test_read import has_numpy_and_not_has_numpy, numpy_cases
 
 def _test_values_equal(data, mem_data, numpy):
     for colname in data.dtype.names:
@@ -17,8 +15,9 @@ def _test_values_equal(data, mem_data, numpy):
         else:
             assert(matches)
 
-def _test_memory_from_table(numpy):
-    table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=numpy)
+@has_numpy_and_not_has_numpy
+def test_memory_from_table(numpy):
+    table = asciitable.get_reader(numpy=numpy, Reader=asciitable.Daophot)
     data = table.read('t/daophot.dat')
 
     mem_table = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy)
@@ -30,12 +29,8 @@ def _test_memory_from_table(numpy):
     assert(data.dtype.names == mem_data.dtype.names)
     _test_values_equal(data, mem_data, numpy)
 
-def test_memory_from_table():
-    _test_memory_from_table(numpy=False)
-    if has_numpy:
-        _test_memory_from_table(numpy=True)
-
-def _test_memory_from_LOL(numpy):
+@has_numpy_and_not_has_numpy
+def test_memory_from_LOL(numpy):
     data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
     mem_table = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy)
     mem_data = mem_table.read(data)
@@ -52,12 +47,8 @@ def _test_memory_from_LOL(numpy):
         assert(mem_data['col2'] == [2, 5.2, 9])
         assert(mem_data['col3'] == [3, 6.1, 'hello'])
 
-def test_memory_from_LOL():
-    _test_memory_from_LOL(numpy=False)
-    if has_numpy:
-        _test_memory_from_LOL(numpy=True)
-
-def _test_memory_from_LOL2(numpy):
+@has_numpy_and_not_has_numpy
+def test_memory_from_LOL2(numpy):
     data = [[1, 2, 3], [4, 5.2, 6.1], [8, 9, 'hello']]
     mem_table = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy, names=('c1','c2','c3'))
     mem_data = mem_table.read(data)
@@ -74,12 +65,8 @@ def _test_memory_from_LOL2(numpy):
         assert(mem_data['c2'] == [2, 5.2, 9])
         assert(mem_data['c3'] == [3, 6.1, 'hello'])
 
-def test_memory_from_LOL2():
-    _test_memory_from_LOL2(numpy=False)
-    if has_numpy:
-        _test_memory_from_LOL2(numpy=True)
-
-def _test_memory_from_DOL(numpy):
+@has_numpy_and_not_has_numpy
+def test_memory_from_DOL(numpy):
     data = {'c1': [1, 2, 3],
             'c2': [4, 5.2, 6.1],
             'c3': [8, 9, 'hello']}
@@ -97,9 +84,3 @@ def _test_memory_from_DOL(numpy):
         assert(mem_data[0] == [1, 4, 8])
         assert(mem_data['c2'] == [4, 5.2, 6.1])
         assert(mem_data['c3'] == [8, 9, 'hello'])
-
-def test_memory_from_DOL():
-    _test_memory_from_DOL(numpy=False)
-    if has_numpy:
-        _test_memory_from_DOL(numpy=True)
-
