@@ -118,7 +118,7 @@ Commonly used parameters for ``read()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **table** : input table 
-  There are three ways to specify the table to be read:
+  There are four ways to specify the table to be read:
 
   - Name of a file (string)
   - Single string containing all table lines separated by newlines
