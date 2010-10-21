@@ -169,6 +169,15 @@ def test_from_string(numpy):
     assert_equal(len(data), testfile['nrows'])
     
 @has_numpy_and_not_has_numpy
+def test_from_filelike(numpy):
+    f = 't/simple.txt'
+    table = open(f)
+    testfile = get_testfiles(f)
+    data = asciitable.read(table, numpy=numpy, **testfile['opts'])
+    assert_equal(data.dtype.names, testfile['cols'])
+    assert_equal(len(data), testfile['nrows'])
+    
+@has_numpy_and_not_has_numpy
 def test_from_lines(numpy):
     f = 't/simple.txt'
     table = open(f).readlines()

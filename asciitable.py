@@ -88,6 +88,7 @@ class BaseInputter(object):
 
     * File name
     * String (newline separated) with all header and data lines (must have at least 2 lines)
+    * File-like object with read() method
     * List of strings
     """
     def get_lines(self, table):
@@ -97,7 +98,9 @@ class BaseInputter(object):
         :returns: list of lines
         """
         try:
-            if os.linesep not in table + '':
+            if hasattr(table, 'read'):
+                table = table.read()
+            elif os.linesep not in table + '':
                 table = open(table, 'r').read()
             lines = table.splitlines()
         except TypeError:

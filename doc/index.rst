@@ -122,6 +122,7 @@ Commonly used parameters for ``read()``
 
   - Name of a file (string)
   - Single string containing all table lines separated by newlines
+  - File-like object with a callable read() method
   - List of strings where each list element is a table line
 
   The first two options are distinguished by the presence of a newline in the string.  
