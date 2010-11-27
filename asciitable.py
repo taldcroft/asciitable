@@ -34,6 +34,7 @@ import re
 import csv
 import itertools
 
+
 try:
     import numpy
     has_numpy = True
@@ -82,6 +83,7 @@ class Column(object):
         self.name = name
         self.index = index
         self.str_vals = []
+        self.fill_values = {}
 
 class BaseInputter(object):
     """Get the lines from the table input and return a list of lines.  The input table can be one of:
@@ -339,6 +341,11 @@ class BaseHeader(object):
                 lines.append(spacer_line)
             lines.append(self.splitter.join([x.name for x in table.cols]))
 
+    @property
+    def colnames(self):
+        """Return the column names of the table"""
+        return tuple(col.name for col in self.cols)
+
 
 class BaseData(object):
     """Base table data reader.
@@ -355,10 +362,12 @@ class BaseData(object):
     write_spacer_lines = ['ASCIITABLE_WRITE_SPACER_LINE']
     formats = {}
     default_formatter = str
+    fill_values = None
+    fill_include_names = None
+    fill_exclude_names = None
     
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
-        self.fill_values = None
 
     def process_lines(self, lines):
         """Strip out comment lines and blank lines from list of ``lines``
@@ -390,13 +399,59 @@ class BaseData(object):
         for each data line."""
         return self.splitter(self.data_lines)
 
-    def _set_masks(self, cols):
-        """Placeholder code for mask support"""
+    def masks(self, cols):
+        """Set fill value for each column and then apply that fill value
+        
+        In the first step it is evaluated with value from ``fill_values`` applies to
+        which column using ``fill_include_names`` and ``fill_exclude_names``.
+        In the second step all replacements are done for the appropriate columns.
+        """
         if self.fill_values is not None:
-            for col in cols:
+            self._set_fill_values(cols)
+            self._set_masks(cols)
+    
+    def _set_fill_values(self, cols):
+        """Set the fill values of the individual cols based on fill_values of BaseData
+
+        fill values has the following form:
+        <fill_spec> = (<bad_value>, <fill_value>, <optional col_name>...)
+        fill_values = <fill_spec> or list of <fill_spec>'s
+
+        """
+        if self.fill_values is not None:
+            #if input is only one <fill_spec>, then make it a list
+            try:
+                test=self.fill_values[0]+''
+                self.fill_values = [ self.fill_values ] 
+            except TypeError:
+                pass
+            # Step 1: Find out which columns can be affected by fill_values at all        
+            colnames = set(self.header.colnames)
+            if self.fill_include_names is not None:
+                colnames.intersection_update(self.fill_include_names)
+            if self.fill_exclude_names is not None:
+                colnames.difference_update(self.fill_exclude_names)
+        
+            # Step 2a: Find out which columns are affected by this tuple
+            # iterate over reversed order, so last condition is set first and overwritten by earlier conditions
+            for replacement in reversed(self.fill_values):
+                if len(replacement) < 2:
+                    raise ValueError("Format of fill_values must be ('bad', 'fill', <col1>, ...)")              
+                elif len(replacement) == 2:
+                    affect_cols = colnames               
+                else:
+                    affect_cols = colnames & set(replacement[2:])
+            
+                for i, key in ((i, x) for i, x in enumerate(self.header.colnames) if x in affect_cols):
+                    cols[i].fill_values[replacement[0]]=replacement[1]
+
+    def _set_masks(self, cols):
+        """Replace string values in col.str_vales and set masks"""
+        if self.fill_values is not None:
+            for col in (col for col in cols if col.fill_values):
                 col.mask = [False] * len(col.str_vals)
-                for i, str_val in ((i, x) for i, x in enumerate(col.str_vals) if x in self.fill_values):
-                    col.str_vals[i] = self.fill_values[str_val]
+                for i, str_val in ((i, x) for i, x in enumerate(col.str_vals) if x in col.fill_values):
+                    col.str_vals[i] = col.fill_values[str_val]
                     col.mask[i] = True
 
     def write(self, lines, table):
@@ -515,7 +570,7 @@ class BaseOutputter(object):
     def _convert_vals(self, cols):
         for col in cols:
             converters = self.converters.get(col.name, self.default_converter)
-            # Make a copy of converters and make sure converters it is a list
+            # Make a copy of converters and make sure converters is a list
             try:
                 col.converters = converters[:]
             except TypeError:
@@ -533,16 +588,16 @@ class NumpyOutputter(BaseOutputter):
     """Output the table as a numpy.rec.recarray
 
     :param default_converter: default list of functions tried (in order) to convert a column
-    """
-
-    coming_someday = """Missing or bad data values are handled at two levels.  The first is in
+    
+    Missing or bad data values are handled at two levels.  The first is in
     the data reading step where if ``data.fill_values`` is set then any
     occurences of a bad value are replaced by the correspond fill value.
     At the same time a boolean list ``mask`` is created in the column object.
 
-    The second stage is when converting to numpy arrays which can be either
-    plain arrays or masked arrays.  Use the ``auto_masked`` and ``default_masked``
-    to control this behavior as follows:
+    The second stage is when converting to numpy arrays which by default generates
+    masked arrays, if ``data.fill_values`` is set and plain arrays if it is not.
+    In the rare case that plain arrays are needed set ``auto_masked`` (default = True) and
+    ``default_masked`` (default = False) to control this behavior as follows:
 
     ===========  ==============  ===========  ============
     auto_masked  default_masked  fill_values  output
@@ -553,8 +608,11 @@ class NumpyOutputter(BaseOutputter):
     False         --             dict(..)     array
     ===========  ==============  ===========  ============
 
-    :param auto_masked: use masked arrays if data reader has ``fill_values`` set (default=True)
-    :param default_masked: always use masked arrays (default=False)
+    To set these values use::
+    
+      Outputter = asciitable.NumpyOutputter()
+      Outputter.default_masked = True
+    
     """
 
     auto_masked_array = True
@@ -567,7 +625,27 @@ class NumpyOutputter(BaseOutputter):
 
     def __call__(self, cols):
         self._convert_vals(cols)
-        return numpy.rec.fromarrays([x.data for x in cols], names=[x.name for x in cols])
+        recarr = numpy.rec.fromarrays([x.data for x in cols], names=[x.name for x in cols])
+        if self.default_masked_array or (self.auto_masked_array and self._check_col_mask(cols)):
+            maarr = recarr.view(numpy.ma.MaskedArray)
+            for col in cols:
+                if col.fill_values:
+                    maarr[col.name][numpy.array(col.mask)] = numpy.ma.masked
+            return maarr
+        else:
+            return recarr
+
+
+    def _check_col_mask(self, cols):
+        """check if any col has a mask
+        
+        The global mask is stored at the data level and the outputter cannot read is.
+        Thus, recreate this information here from the indevidual columns."""
+        mask_used = False
+        for col in cols: 
+            if col.fill_values:
+                mask_used = True
+        return mask_used
 
 class BaseReader(object):
     """Class providing methods to read an ASCII table using the specified
@@ -626,6 +704,7 @@ class BaseReader(object):
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
 
+        self.data.masks(cols)
         self.table = self.outputter(cols)
         self.cols = self.header.cols
 
@@ -663,7 +742,8 @@ extra_reader_pars = ('Reader', 'Inputter', 'Outputter',
                      'delimiter', 'comment', 'quotechar', 'header_start',
                      'data_start', 'data_end', 'converters',
                      'data_Splitter', 'header_Splitter',
-                     'names', 'include_names', 'exclude_names')
+                     'names', 'include_names', 'exclude_names',
+                     'fill_values', 'fill_include_names', 'fill_exclude_names')
 
 def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs):
     """Initialize a table reader allowing for common customizations.  Most of the
@@ -685,6 +765,11 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
+    :param fill_values: specification of fill values for bad or missing values in input
+            fill values can be <fill_spec> or a list of <fill_specs>. Each <fill_spec> is
+            <fill_spec> = (<bad_value>, <fill_value>, <optional col_name>...) .
+    :param fill_include_names: list of names to include in fill_values (default=None selects all names)
+    :param fill_exclude_names: list of names to exlude from fill_values (applied after ``fill_include_names``)
     """
     if Reader is None:
         Reader = BasicReader
@@ -730,6 +815,13 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
         reader.header.include_names = kwargs['include_names']
     if 'exclude_names' in kwargs:
         reader.header.exclude_names = kwargs['exclude_names']
+    if 'fill_values' in kwargs:
+        reader.data.fill_values = kwargs['fill_values']
+    if 'fill_include_names' in kwargs:
+        reader.data.fill_include_names = kwargs['fill_include_names']
+    if 'fill_exclude_names' in kwargs:
+        reader.data.fill_exclude_names = kwargs['fill_exclude_names']
+
 
     return reader
 
@@ -756,6 +848,12 @@ def read(table, numpy=True, **kwargs):
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
+    :param fill_values: specification of fill values for bad or missing values in input
+            fill values can be <fill_spec> or a list of <fill_specs>. Each <fill_spec> is
+            <fill_spec> = (<bad_value>, <fill_value>, <optional col_name>...) .
+    :param fill_include_names: list of names to include in fill_values (default=None selects all names)
+    :param fill_exclude_names: list of names to exlude from fill_values (applied after ``fill_include_names``)
+
     """
 
     bad_args = [x for x in kwargs if x not in extra_reader_pars]
@@ -1429,6 +1527,7 @@ class Memory(BaseReader):
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
 
+        self.data.masks(cols)
         self.cols = cols
         if hasattr(table, 'keywords'):
             self.keywords = table.keywords

@@ -191,7 +191,65 @@ def test_comment_lines(numpy):
     table = asciitable.get_reader(Reader=asciitable.RdbReader, numpy=numpy)
     data = table.read('t/apostrophe.rdb')
     assert_equal(table.comment_lines, ['# first comment', '  # second comment'])
-    
+
+@has_numpy_and_not_has_numpy
+def test_fill_values(numpy):
+    f = 't/fill_values.txt'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'), **testfile['opts'])
+    if numpy:
+        assert_true((data.mask['a']==[False,True]).all())
+        assert_true((data.data['a']==[1,1]).all())
+        assert_true((data.mask['b']==[False,True]).all())
+        assert_true((data.data['b']==[2,1]).all())
+        
+    else:
+        assert_equal(data['a'],[1,1])
+        assert_equal(data['b'],[2,1])
+        
+@has_numpy_and_not_has_numpy
+def test_fill_values_col(numpy):
+    f = 't/fill_values.txt'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1', 'b'), **testfile['opts'])
+    check_fill_values(numpy, data)
+
+@has_numpy_and_not_has_numpy
+def test_fill_values_include_names(numpy):
+    f = 't/fill_values.txt'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'), fill_include_names = ['b'], **testfile['opts'])
+    check_fill_values(numpy, data)
+        
+@has_numpy_and_not_has_numpy
+def test_fill_values_exclude_names(numpy):
+    f = 't/fill_values.txt'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'), fill_exclude_names = ['a'], **testfile['opts'])
+    check_fill_values(numpy, data)
+
+def check_fill_values(numpy, data):
+    """compare array column by column with expectation """
+    if numpy:
+        assert_true((data.mask['a']==[False,False]).all())
+        assert_true((data.data['a']==['1','a']).all())
+        assert_true((data.mask['b']==[False,True]).all())
+        assert_true((data.data['b']==[2,1]).all())        
+    else:
+        assert_equal(data['a'],['1','a'])
+        assert_equal(data['b'],[2,1])
+
+@has_numpy_and_not_has_numpy
+def test_fill_values_list(numpy):
+    f = 't/fill_values.txt'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, fill_values=[('a','42'),('1','42','a')], **testfile['opts'])
+    if numpy:
+        assert_true((data.data['a']==[42,42]).all())
+    else:
+        assert_equal(data['a'],[42,42])
+
+
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
     read a bunch of test files and verify columns and number of rows."""
@@ -339,7 +397,12 @@ def get_testfiles(name=None):
         {'cols': ('zabs1.nh', 'p1.gamma', 'p1.ampl', 'statname', 'statval'),
          'name': 't/test4.dat',
          'nrows': 1172,
-         'opts': {}}]
+         'opts': {}},
+        {'cols': ('a', 'b', 'c'),
+         'name': 't/fill_values.txt',
+         'nrows': 2,
+         'opts': {'delimiter': ','}}
+         ]
 
     if name is not None:
         return [x for x in testfiles if x['name'] == name][0]

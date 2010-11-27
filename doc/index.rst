@@ -194,6 +194,16 @@ Commonly used parameters for ``read()``
   Exclude these names from the list of output columns.  This is applied *after*
   the ``include_names`` filtering.  If not specified then no columns are excluded.
 
+**fill_values**: fill value specifier of lists
+  This can be used to fill missing values in the table or replace strings with special meaning.
+  See the `Replace certain values`_ section for more information and examples.
+
+**fill_include_names**: list of column names, which are affected by ``fill_values``.
+  If not supplied, then ``fill_values`` can affect all columns.
+
+**fill_exclude_names**: list of column names, which are not affected by ``fill_values``.
+  If not supplied, then ``fill_values`` can affect all columns.
+
 Advanced parameters for ``read()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -207,6 +217,45 @@ of the reading process.  These will be discussed in the `Advanced table reading`
 **Inputter**: Inputter class
 
 **Outputter**: Outputter class
+
+Replace certain values
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:mod:`Asciitable` can replace string values in the input data before they are converted.
+The most common use case is probably a table which contains string values that are not a valid
+representation of a number, e.g. "..." for a missing value or "".
+If :mod:`Asciitable` cannot convert all elements in a column to a numeric type, it will 
+format the column as strings. To avoid this, ``fill_values`` can be used at the string level
+to fill missing values with the following syntax, which replaces ``old`` with ``new`` before the
+type conversion is done::
+
+  <fill_spec> = ('old','new', 'optional col name 1', 'optional col name 2', ...)
+
+After the ``old`` and ``new`` strings zero or more column names can be given. If no columns
+are specified ``old`` is replaced by ``new`` in every column, otherwise it is limited to those 
+columns listed.
+``fill_values`` takes a single ``<fill_spec>`` or a list of those. If several ``<fill_spec>``
+apply to a single occurence of ``old`` the first one determines the ``new`` value.
+
+The following shows an example where string information needs to be exchanged 
+before the conversion to float values happens. Here ``no_rain`` and ``no_snow`` is replaced by ``0.``::
+
+  table = ['day rain_in_inch snow', 'Mon 3.2 no_snow', 'Tue no_rain 1.1', 'Wed 0.3 no_snow']
+  asciitable.read(table, fill_values = [('no_rain', '0.0'), ('no_snow', '0.0')])
+ 
+Sometimes these rules apply only to specific columns in the table. Columns can be selected with
+``fill_include_names`` or excluded with ``fill_exclude_names``. Also, column names can be
+given directly with fill_values::
+
+  asciidata = ['text,no1,no2', 'text1,1,1.',',2,']
+  asciitable.read(asciidata, fill_values = ('', 'nan','no1','no2'), delimiter = ',')
+
+Here, the empty value ``''`` in column ``no2`` is replaced by ``nan``, but the ``text``
+column remains unaltered. 
+
+If the ``numpy`` module is available, then the default output is a masked array, where all
+values, which were replaced by ``fill_values`` are masked.
+See the description of the :class:`~asciitable.NumpyOutputter` class how to switch off maked arrays.
 
 Converters
 ^^^^^^^^^^^^^^
