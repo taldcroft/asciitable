@@ -49,8 +49,13 @@ git status
 git commit -a
   Insert text from CHANGES, starting with a single line summary followed
   by a blank line
+
+git remote -a  # check origin
+git push [--dry-run] origin <newbranch>
+
 git checkout master
 git merge <newbranch>
+git push [--dry-run] origin 
 
 Post announcements
 -------------------
