@@ -1,3 +1,32 @@
+0.4.0
+=====
+Add capability to handle bad or missing values in the input table.  This is
+done with a new fill_values parameter that specifies replacement of
+particular bad or missing values with new values.  When used with NumPy
+the default output will be a NumPy masked array.
+
+Contributed by Moritz Guenther
+
+0.3.1
+=====
+This release features the new capability to write ASCII tables using the same
+basic infrastructure and API as for reading.  Other updates include:
+
+- Python 3 compatibility
+- Significant documentation updates
+- Improved test coverage
+- New Reader class to read in-memory tables
+
+0.2.5
+======
+Primarily a documentation update, including much more detail on the parameters
+for the read() function plus a bit more for other advanced features.  There are
+a couple of minor code fixes / updates:
+
+- Gracefully read tables that have a header but no data lines.
+- Update the Tab reader so all data value spaces are preserved
+  (including leading/trailing)
+
 0.2.2
 =====
 Add IPAC reader and reader comment_lines attribute plus doc updates.

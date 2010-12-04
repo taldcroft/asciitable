@@ -2,3 +2,4 @@ include t/*
 include doc/*.rst
 include CHANGES
 include VERSION
+exclude t/*~

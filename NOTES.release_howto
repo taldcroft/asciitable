@@ -1,0 +1,80 @@
+Release procedure
+===================
+
+Edit/develop in a new git branch
+--------------------------------
+git checkout -b <newbranch>
+
+Test
+------
+- Using env that includes python 2.6 and python 3 (typically ska on HEAD LAN)
+nosetests
+nosetests3
+
+- Using env which has /usr/bin/python2.4 (un-ska env on HEAD LAN)
+nosetests
+
+Prepare for release
+--------------------
+- Update VERSION
+- Update CHANGES
+
+Make the source distribution and confirm the correct files
+------------------------------------------------------------
+rm -rf dist
+rm MANIFEST
+python setup.py sdist
+
+Install the source distribution to devska and test
+--------------------------------------------------
+<in a new window>
+cp dist/*.tar.gz /pool14/aldcroft/
+cd /pool14/aldcroft
+tar xvf asciitable-*.tar.gz
+cd asciitable-*
+nosetests
+nosetests3
+
+Install new source tarball and test
+---------------------------------------------
+make install
+
+- Confirm the site looks correct (version number, changes).
+- Download tarball and diff against the one in /pool14/aldcroft
+  http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz
+
+Local git checkin, merge and github
+-----------------------------------
+git status
+git commit -a
+  Insert text from CHANGES, starting with a single line summary followed
+  by a blank line
+git checkout master
+git merge <newbranch>
+
+Post announcements
+-------------------
+- Send mail to astropy@scipy.org  bcc: pythonusers@head.cfa.harvard.edu
+  Example::
+
+  I'd like to announce the release of version 0.3.1 of asciitable, an
+  extensible module for reading and writing ASCII tables.  This release
+  features the new capability to write ASCII tables using the same basic
+  infrastructure and API as for reading.
+
+   http://cxc.harvard.edu/contrib/asciitable/
+
+  Other updates include:
+
+  - Python 3 compatibility
+  - Significant documentation updates
+  - Improved test coverage
+  - New Reader class to read in-memory tables
+
+  Regards,
+  Tom Aldcroft
+
+* Post the same to comp.lang.python.announce
+
+
+

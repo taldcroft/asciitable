@@ -421,11 +421,11 @@ class BaseData(object):
         if self.fill_values is not None:
             #if input is only one <fill_spec>, then make it a list
             try:
-                test=self.fill_values[0]+''
+                self.fill_values[0] + ''
                 self.fill_values = [ self.fill_values ] 
             except TypeError:
                 pass
-            # Step 1: Find out which columns can be affected by fill_values at all        
+            # Step 1: Set the default list of columns which are affected by fill_values
             colnames = set(self.header.colnames)
             if self.fill_include_names is not None:
                 colnames.intersection_update(self.fill_include_names)
@@ -436,14 +436,14 @@ class BaseData(object):
             # iterate over reversed order, so last condition is set first and overwritten by earlier conditions
             for replacement in reversed(self.fill_values):
                 if len(replacement) < 2:
-                    raise ValueError("Format of fill_values must be ('bad', 'fill', <col1>, ...)")              
+                    raise ValueError("Format of fill_values must be (<bad>, <fill>, <optional col1>, ...)")
                 elif len(replacement) == 2:
                     affect_cols = colnames               
                 else:
-                    affect_cols = colnames & set(replacement[2:])
+                    affect_cols = replacement[2:]
             
                 for i, key in ((i, x) for i, x in enumerate(self.header.colnames) if x in affect_cols):
-                    cols[i].fill_values[replacement[0]]=replacement[1]
+                    cols[i].fill_values[replacement[0]] = str(replacement[1])
 
     def _set_masks(self, cols):
         """Replace string values in col.str_vales and set masks"""
@@ -626,7 +626,8 @@ class NumpyOutputter(BaseOutputter):
     def __call__(self, cols):
         self._convert_vals(cols)
         recarr = numpy.rec.fromarrays([x.data for x in cols], names=[x.name for x in cols])
-        if self.default_masked_array or (self.auto_masked_array and self._check_col_mask(cols)):
+        if self.default_masked_array or (self.auto_masked_array and
+                                         any(col.fill_values for col in cols)):
             maarr = recarr.view(numpy.ma.MaskedArray)
             for col in cols:
                 if col.fill_values:
@@ -635,17 +636,6 @@ class NumpyOutputter(BaseOutputter):
         else:
             return recarr
 
-
-    def _check_col_mask(self, cols):
-        """check if any col has a mask
-        
-        The global mask is stored at the data level and the outputter cannot read is.
-        Thus, recreate this information here from the indevidual columns."""
-        mask_used = False
-        for col in cols: 
-            if col.fill_values:
-                mask_used = True
-        return mask_used
 
 class BaseReader(object):
     """Class providing methods to read an ASCII table using the specified
@@ -765,9 +755,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
-    :param fill_values: specification of fill values for bad or missing values in input
-            fill values can be <fill_spec> or a list of <fill_specs>. Each <fill_spec> is
-            <fill_spec> = (<bad_value>, <fill_value>, <optional col_name>...) .
+    :param fill_values: specification of fill values for bad or missing table values
     :param fill_include_names: list of names to include in fill_values (default=None selects all names)
     :param fill_exclude_names: list of names to exlude from fill_values (applied after ``fill_include_names``)
     """
@@ -848,9 +836,7 @@ def read(table, numpy=True, **kwargs):
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
-    :param fill_values: specification of fill values for bad or missing values in input
-            fill values can be <fill_spec> or a list of <fill_specs>. Each <fill_spec> is
-            <fill_spec> = (<bad_value>, <fill_value>, <optional col_name>...) .
+    :param fill_values: specification of fill values for bad or missing table values
     :param fill_include_names: list of names to include in fill_values (default=None selects all names)
     :param fill_exclude_names: list of names to exlude from fill_values (applied after ``fill_include_names``)
 

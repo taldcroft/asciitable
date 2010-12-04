@@ -218,14 +218,16 @@ def test_fill_values_col(numpy):
 def test_fill_values_include_names(numpy):
     f = 't/fill_values.txt'
     testfile = get_testfiles(f)
-    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'), fill_include_names = ['b'], **testfile['opts'])
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'),
+                           fill_include_names = ['b'], **testfile['opts'])
     check_fill_values(numpy, data)
         
 @has_numpy_and_not_has_numpy
 def test_fill_values_exclude_names(numpy):
     f = 't/fill_values.txt'
     testfile = get_testfiles(f)
-    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'), fill_exclude_names = ['a'], **testfile['opts'])
+    data = asciitable.read(f, numpy=numpy, fill_values=('a','1'),
+                           fill_exclude_names = ['a'], **testfile['opts'])
     check_fill_values(numpy, data)
 
 def check_fill_values(numpy, data):
@@ -243,7 +245,8 @@ def check_fill_values(numpy, data):
 def test_fill_values_list(numpy):
     f = 't/fill_values.txt'
     testfile = get_testfiles(f)
-    data = asciitable.read(f, numpy=numpy, fill_values=[('a','42'),('1','42','a')], **testfile['opts'])
+    data = asciitable.read(f, numpy=numpy, fill_values=[('a','42'),('1','42','a')],
+                           **testfile['opts'])
     if numpy:
         assert_true((data.data['a']==[42,42]).all())
     else:

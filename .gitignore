@@ -1,6 +1,8 @@
 doc/
 dist/
+build/
 *~
 *.pyc
 MANIFEST
 genfromtext.api
+asciitable.egg-info/
