@@ -57,6 +57,10 @@ git checkout master
 git merge <newbranch>
 git push [--dry-run] origin 
 
+Update PyPI
+-----------
+python setup.py register
+
 Post announcements
 -------------------
 - Send mail to astropy@scipy.org  bcc: pythonusers@head.cfa.harvard.edu
