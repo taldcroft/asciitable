@@ -34,7 +34,6 @@ import re
 import csv
 import itertools
 
-
 try:
     import numpy
     has_numpy = True
@@ -292,7 +291,7 @@ class BaseHeader(object):
         attributes.  See ``self.names`` for the full list.
 
         :param lines: list of table lines
-        :returns: list of table Columns
+        :returns: None
         """
 
         start_line = _get_line_index(self.start_line, lines)
@@ -813,7 +812,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
     return reader
 
-def read(table, numpy=True, **kwargs):
+def read(table, numpy=True, guess=False, **kwargs):
     """Read the input ``table``.  If ``numpy`` is True (default) return the
     table in a numpy record array.  Otherwise return the table as a dictionary
     of column objects using plain python lists to hold the data.  Most of the
@@ -821,7 +820,8 @@ def read(table, numpy=True, **kwargs):
 
     :param table: input table (file name, list of strings, or single newline-separated string)
     :param numpy: use the :class:`NumpyOutputter` class else use :class:`BaseOutputter` (default=True)
-    :param Reader: Reader class (default= :class:`~asciitable.BasicReader` )
+    :param guess: try to guess the table format (default=False)
+    :param Reader: Reader class (default= :class:`~asciitable.BasicReader`)
     :param Inputter: Inputter class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
@@ -855,8 +855,52 @@ def read(table, numpy=True, **kwargs):
         new_kwargs['Outputter'] = BaseOutputter
     new_kwargs.update(kwargs)
         
-    reader = get_reader(**new_kwargs)
-    return reader.read(table)
+    if guess:
+        dat = _guess(table, new_kwargs)
+    else:
+        reader = get_reader(**new_kwargs)
+        dat = reader.read(table)
+    return dat
+
+def _is_number(x):
+    try:
+        x = float(x)
+        return True
+    except ValueError:
+        pass
+    return False
+    
+def _guess(table, read_kwargs):
+    for guess_kwargs in _get_guess_kwargs_list():
+        try_kwargs = read_kwargs.copy()
+        try_kwargs.update(guess_kwargs)
+        try:
+            reader = get_reader(**try_kwargs)
+            dat = reader.read(table)
+            if len(reader.cols) <= 1:
+                raise ValueError
+            if any(_is_number(col.name) for col in reader.cols):
+                raise ValueError
+            return dat
+        except Exception, err:
+            pass
+    else:
+        # failed all
+        raise ValueError('Unable to read table with guess=True.')
+    
+def _get_guess_kwargs_list():
+    guess_kwargs_list = [dict(Reader=Rdb),
+                         dict(Reader=Tab),
+                         dict(Reader=Cds),
+                         dict(Reader=Daophot),
+                         dict(Reader=Ipac),
+                         ]
+    for Reader in (CommentedHeader, BasicReader, NoHeader):
+        for delimiter in ("|", ",", " "):
+            for quotechar in ('"', "'"):
+                guess_kwargs_list.append(dict(
+                    Reader=Reader, delimiter=delimiter, quotechar=quotechar))
+    return guess_kwargs_list
 
 extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
                      'names', 'include_names', 'exclude_names')
@@ -1627,7 +1671,41 @@ class MemoryData(BaseData):
         return lines
 
 class RdbHeader(BaseHeader):
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+        
+        This is a specialized get_cols for the RDB type:
+        Line 0: RDB col names
+        Line 1: RDB col definitions
+        Line 2+: RDB data rows
+
+        :param lines: list of table lines
+        :returns: None
+        """
+        header_lines = self.process_lines(lines)   # this is a generator
+        header_vals_list = [hl for _, hl in zip(range(2), self.splitter(header_lines))]
+        if len(header_vals_list) != 2:
+            raise ValueError('RDB header requires 2 lines')
+        self.names, rdb_types = header_vals_list
+
+        if len(self.names) != len(rdb_types):
+            raise ValueError('RDB header mismatch between number of column names and column types')
+        
+        if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in rdb_types):
+            raise ValueError('RDB types definitions do not all match [num](N|S): {0}'.format(rdb_types))
+        
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=name, index=i) 
+                     for i, name in enumerate(self.names) if name in names]
+        for col, rdb_type in zip(self.cols, rdb_types):
+            col.rdb_type = rdb_type
+
     def write(self, lines, table):
         lines.append(self.splitter.join([x.name for x in table.cols]))
-        lines.append(self.splitter.join(['S' for x in table.cols]))
+        lines.append(self.splitter.join([getattr(x, 'rdb_type', 'S') for x in table.cols]))
 

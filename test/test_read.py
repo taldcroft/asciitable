@@ -264,7 +264,7 @@ def get_testfiles(name=None):
          'opts': {'Reader': asciitable.Rdb}},
         {'cols': ('agasc_id', 'n_noids', 'n_obs'),
          'name': 't/apostrophe.tab',
-         'nrows': 3,
+         'nrows': 2,
          'opts': {'Reader': asciitable.Tab}},
         {'cols': ('Index',
                   'RAh',

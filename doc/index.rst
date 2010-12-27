@@ -145,6 +145,11 @@ Commonly used parameters for ``read()``
   of |read| will then be a dictionary of :class:`~asciitable.Column` objects
   with each key for the corresponding named column.
   
+**guess**: try to guess table format (default=False)
+  If set to True then |read| will try to guess the table format by cycling
+  through a number of possible table format permuations and attemping to read
+  the table in each case.  See the `Guess table format`_ section for further details.
+  
 **delimiter** : column delimiter string
   A one-character string used to separate fields which typically defaults to the space character.
   Other common values might be "," or "|" or "\\t".  Note that when reading a table with 
@@ -273,6 +278,33 @@ If the ``numpy`` module is available, then the default output is a
 where all values, which were replaced by ``fill_values`` are masked.  See the
 description of the :class:`~asciitable.NumpyOutputter` class for information on 
 disabling masked arrays.
+
+Guess table format
+^^^^^^^^^^^^^^^^^^^^^^
+
+If the ``guess`` parameter in |read| is set to True then |read| will try to
+guess the table format by cycling through a number of possible table format
+permuations and attemping to read the table in each case. The first format
+which succeeds and will be used to read the table. To succeed the table must
+be successfully parsed by the Reader and result in at least two table columns,
+where none of the table column names are a float or int number. These
+requirements reduce the chance for a false positive where a table is
+successfully parsed into a single column using the wrong delimiter or where
+the first data row is incorrectly assumed to be the column names. The guess
+algorithm is not perfect but it does successfully guess the format for all the
+test cases included in the source distribution (see ``test/test_guess.py`` for
+examples).
+
+The order of guessing is shown by this Python code::
+  
+  for Reader in (Rdb, Tab, Cds, Daophot, Ipac):
+      read(Reader=Reader)
+  for Reader in (CommentedHeader, BasicReader, NoHeader):
+      for delimiter in ("|", ",", " "):
+          for quotechar in ('"', "'"):
+              read(Reader=Reader, delimiter=delimiter, quotechar=quotechar)
+
+
 
 Converters
 ^^^^^^^^^^^^^^
