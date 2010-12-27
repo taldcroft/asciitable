@@ -147,16 +147,16 @@ class BaseSplitter(object):
       
     :param delimiter: one-character string used to separate fields 
     """
-    def process_line(self, x):
+    delimiter = None
+    
+    def process_line(self, line):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
         whitespace-delimited files to prevent spurious columns at the beginning or end."""
-        return x.strip()
+        return line.strip()
 
-    def process_val(self, x):
+    def process_val(self, val):
         """Remove whitespace at the beginning or end of value."""
-        return x.strip()
-
-    delimiter = None
+        return val.strip()
 
     def __call__(self, lines):
         if self.process_line:
@@ -202,6 +202,14 @@ class DefaultSplitter(BaseSplitter):
     quoting = csv.QUOTE_MINIMAL
     skipinitialspace = True
     
+    def process_line(self, line):
+        """Remove whitespace at the beginning or end of line.  This is especially useful for
+        whitespace-delimited files to prevent spurious columns at the beginning or end. 
+        If splitting on whitespace then replace unquoted tabs with space first"""
+        if self.delimiter == '\s':
+            line = _replace_tab_with_space(line, self.escapechar, self.quotechar)
+        return line.strip()
+
     def __init__(self):
         self.csv_writer = None
         self.csv_writer_out = io.StringIO()
@@ -216,8 +224,13 @@ class DefaultSplitter(BaseSplitter):
         if self.process_line:
             lines = [self.process_line(x) for x in lines]
 
+        if self.delimiter == '\s':
+            delimiter = ' '
+        else:
+            delimiter = self.delimiter
+
         csv_reader = csv.reader(lines,
-                                delimiter =self.delimiter,
+                                delimiter = delimiter,
                                 doublequote = self.doublequote,
                                 escapechar =self.escapechar,
                                 quotechar = self.quotechar,
@@ -251,7 +264,19 @@ class DefaultSplitter(BaseSplitter):
 
         return self.csv_writer_out.getvalue()
     
-
+def _replace_tab_with_space(line, escapechar, quotechar):
+    """Replace tab with space within ``line`` while respecting quoted substrings"""
+    newline = []
+    in_quote = False
+    lastchar = 'NONE'
+    for char in line:
+        if char == quotechar and lastchar != escapechar:
+            in_quote = not in_quote
+        if char == '\t' and not in_quote:
+            char = ' '
+        lastchar = char
+        newline.append(char)
+    return ''.join(newline)
 
 def _get_line_index(line_or_func, lines):
     if hasattr(line_or_func, '__call__'):
@@ -896,7 +921,7 @@ def _get_guess_kwargs_list():
                          dict(Reader=Ipac),
                          ]
     for Reader in (CommentedHeader, BasicReader, NoHeader):
-        for delimiter in ("|", ",", " "):
+        for delimiter in ("|", ",", " ", "\s"):
             for quotechar in ('"', "'"):
                 guess_kwargs_list.append(dict(
                     Reader=Reader, delimiter=delimiter, quotechar=quotechar))
@@ -1709,3 +1734,19 @@ class RdbHeader(BaseHeader):
         lines.append(self.splitter.join([x.name for x in table.cols]))
         lines.append(self.splitter.join([getattr(x, 'rdb_type', 'S') for x in table.cols]))
 
+class WhitespaceSplitter(DefaultSplitter):
+    def process_line(self, line):
+        """Replace tab with space within ``line`` while respecting quoted substrings"""
+        newline = []
+        in_quote = False
+        lastchar = None
+        for char in line:
+            if char == self.quotechar and (self.escapechar is None or 
+                                           lastchar != self.escapechar):
+                in_quote = not in_quote
+            if char == '\t' and not in_quote:
+                char = ' '
+            lastchar = char
+            newline.append(char)
+
+        return ''.join(newline)
