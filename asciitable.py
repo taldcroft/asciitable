@@ -34,14 +34,13 @@ import re
 import csv
 import itertools
 
-
 try:
     import numpy
     has_numpy = True
 except ImportError:
     has_numpy = False
 
-class InconsistentTableError(Exception):
+class InconsistentTableError(ValueError):
     pass
 
 # Python 3 compatibility tweaks.  Should work back through 2.4.
@@ -59,6 +58,9 @@ try:
     izip = itertools.izip
 except AttributeError:
     izip = zip
+
+# Default setting for guess parameter in read()
+GUESS = True
 
 class Keyword(object):
     """Table keyword"""
@@ -148,16 +150,16 @@ class BaseSplitter(object):
       
     :param delimiter: one-character string used to separate fields 
     """
-    def process_line(self, x):
+    delimiter = None
+    
+    def process_line(self, line):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
         whitespace-delimited files to prevent spurious columns at the beginning or end."""
-        return x.strip()
+        return line.strip()
 
-    def process_val(self, x):
+    def process_val(self, val):
         """Remove whitespace at the beginning or end of value."""
-        return x.strip()
-
-    delimiter = None
+        return val.strip()
 
     def __call__(self, lines):
         if self.process_line:
@@ -203,6 +205,14 @@ class DefaultSplitter(BaseSplitter):
     quoting = csv.QUOTE_MINIMAL
     skipinitialspace = True
     
+    def process_line(self, line):
+        """Remove whitespace at the beginning or end of line.  This is especially useful for
+        whitespace-delimited files to prevent spurious columns at the beginning or end. 
+        If splitting on whitespace then replace unquoted tabs with space first"""
+        if self.delimiter == '\s':
+            line = _replace_tab_with_space(line, self.escapechar, self.quotechar)
+        return line.strip()
+
     def __init__(self):
         self.csv_writer = None
         self.csv_writer_out = io.StringIO()
@@ -217,8 +227,13 @@ class DefaultSplitter(BaseSplitter):
         if self.process_line:
             lines = [self.process_line(x) for x in lines]
 
+        if self.delimiter == '\s':
+            delimiter = ' '
+        else:
+            delimiter = self.delimiter
+
         csv_reader = csv.reader(lines,
-                                delimiter =self.delimiter,
+                                delimiter = delimiter,
                                 doublequote = self.doublequote,
                                 escapechar =self.escapechar,
                                 quotechar = self.quotechar,
@@ -252,7 +267,19 @@ class DefaultSplitter(BaseSplitter):
 
         return self.csv_writer_out.getvalue()
     
-
+def _replace_tab_with_space(line, escapechar, quotechar):
+    """Replace tab with space within ``line`` while respecting quoted substrings"""
+    newline = []
+    in_quote = False
+    lastchar = 'NONE'
+    for char in line:
+        if char == quotechar and lastchar != escapechar:
+            in_quote = not in_quote
+        if char == '\t' and not in_quote:
+            char = ' '
+        lastchar = char
+        newline.append(char)
+    return ''.join(newline)
 
 def _get_line_index(line_or_func, lines):
     if hasattr(line_or_func, '__call__'):
@@ -292,7 +319,7 @@ class BaseHeader(object):
         attributes.  See ``self.names`` for the full list.
 
         :param lines: list of table lines
-        :returns: list of table Columns
+        :returns: None
         """
 
         start_line = _get_line_index(self.start_line, lines)
@@ -813,7 +840,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
     return reader
 
-def read(table, numpy=True, **kwargs):
+def read(table, numpy=True, guess=None, **kwargs):
     """Read the input ``table``.  If ``numpy`` is True (default) return the
     table in a numpy record array.  Otherwise return the table as a dictionary
     of column objects using plain python lists to hold the data.  Most of the
@@ -821,7 +848,8 @@ def read(table, numpy=True, **kwargs):
 
     :param table: input table (file name, list of strings, or single newline-separated string)
     :param numpy: use the :class:`NumpyOutputter` class else use :class:`BaseOutputter` (default=True)
-    :param Reader: Reader class (default= :class:`~asciitable.BasicReader` )
+    :param guess: try to guess the table format (default=False)
+    :param Reader: Reader class (default= :class:`~asciitable.BasicReader`)
     :param Inputter: Inputter class
     :param Outputter: Outputter class
     :param delimiter: column delimiter string
@@ -855,8 +883,75 @@ def read(table, numpy=True, **kwargs):
         new_kwargs['Outputter'] = BaseOutputter
     new_kwargs.update(kwargs)
         
-    reader = get_reader(**new_kwargs)
-    return reader.read(table)
+    if guess is None:
+        guess = GUESS
+    if guess:
+        dat = _guess(table, new_kwargs)
+    else:
+        reader = get_reader(**new_kwargs)
+        dat = reader.read(table)
+    return dat
+
+def _is_number(x):
+    try:
+        x = float(x)
+        return True
+    except ValueError:
+        pass
+    return False
+    
+def _guess(table, read_kwargs):
+    """Try to read the table using various sets of keyword args. First try the
+    original args supplied in the read() call. Then try the standard guess
+    keyword args. For each key/val pair specified explicitly in the read()
+    call make sure that if there is a corresponding definition in the guess
+    then it must have the same val.  If not then skip this guess."""
+
+    # First try guessing
+    for guess_kwargs in [read_kwargs.copy()] + _get_guess_kwargs_list():
+        for key, val in read_kwargs.items():
+            # Do guess_kwargs.update(read_kwargs) except that if guess_args has
+            # a conflicting key/val pair then skip this guess entirely.
+            if key not in guess_kwargs:
+                guess_kwargs[key] = val
+            elif val != guess_kwargs[key]:
+                continue
+
+        try:
+            reader = get_reader(**guess_kwargs)
+            dat = reader.read(table)
+            # When guessing impose additional requirements on column names and number of cols
+            bads = [" ", ",", "|", "\t", "'", '"']
+            if (len(reader.cols) <= 1 or
+                any(_is_number(col.name) or 
+                     len(col.name) == 0 or 
+                     col.name[0] in bads or 
+                     col.name[-1] in bads for col in reader.cols)):
+                raise ValueError
+            return dat
+        except (InconsistentTableError, ValueError):
+            pass
+    else:
+        # failed all guesses, try the original read_kwargs without column requirements
+        try:
+            reader = get_reader(**read_kwargs)
+            return reader.read(table)
+        except (InconsistentTableError, ValueError):
+            raise InconsistentTableError('Unable to read table with guess=True.')
+    
+def _get_guess_kwargs_list():
+    guess_kwargs_list = [dict(Reader=Rdb),
+                         dict(Reader=Tab),
+                         dict(Reader=Cds),
+                         dict(Reader=Daophot),
+                         dict(Reader=Ipac),
+                         ]
+    for Reader in (CommentedHeader, BasicReader, NoHeader):
+        for delimiter in ("|", ",", " ", "\s"):
+            for quotechar in ('"', "'"):
+                guess_kwargs_list.append(dict(
+                    Reader=Reader, delimiter=delimiter, quotechar=quotechar))
+    return guess_kwargs_list
 
 extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
                      'names', 'include_names', 'exclude_names')
@@ -1204,6 +1299,9 @@ class DaophotHeader(BaseHeader):
                 if match:
                     self.names.extend(match.group(1).split())
         
+        if not self.names:
+            raise InconsistentTableError('No column names found in DAOphot header')
+        
         names = set(self.names)
         if self.include_names is not None:
             names.intersection_update(self.include_names)
@@ -1300,6 +1398,8 @@ class CdsData(BaseData):
         """Skip over CDS header by finding the last section delimiter"""
         i_sections = [i for (i, x) in enumerate(lines)
                       if x.startswith('------') or x.startswith('=======')]
+        if not i_sections:
+            raise InconsistentTableError('No CDS section delimiter found')
         return lines[i_sections[-1]+1 : ]
 
 
@@ -1627,7 +1727,57 @@ class MemoryData(BaseData):
         return lines
 
 class RdbHeader(BaseHeader):
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+        
+        This is a specialized get_cols for the RDB type:
+        Line 0: RDB col names
+        Line 1: RDB col definitions
+        Line 2+: RDB data rows
+
+        :param lines: list of table lines
+        :returns: None
+        """
+        header_lines = self.process_lines(lines)   # this is a generator
+        header_vals_list = [hl for _, hl in zip(range(2), self.splitter(header_lines))]
+        if len(header_vals_list) != 2:
+            raise ValueError('RDB header requires 2 lines')
+        self.names, rdb_types = header_vals_list
+
+        if len(self.names) != len(rdb_types):
+            raise ValueError('RDB header mismatch between number of column names and column types')
+        
+        if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in rdb_types):
+            raise ValueError('RDB types definitions do not all match [num](N|S): {0}'.format(rdb_types))
+        
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=name, index=i) 
+                     for i, name in enumerate(self.names) if name in names]
+        for col, rdb_type in zip(self.cols, rdb_types):
+            col.rdb_type = rdb_type
+
     def write(self, lines, table):
         lines.append(self.splitter.join([x.name for x in table.cols]))
-        lines.append(self.splitter.join(['S' for x in table.cols]))
+        lines.append(self.splitter.join([getattr(x, 'rdb_type', 'S') for x in table.cols]))
 
+class WhitespaceSplitter(DefaultSplitter):
+    def process_line(self, line):
+        """Replace tab with space within ``line`` while respecting quoted substrings"""
+        newline = []
+        in_quote = False
+        lastchar = None
+        for char in line:
+            if char == self.quotechar and (self.escapechar is None or 
+                                           lastchar != self.escapechar):
+                in_quote = not in_quote
+            if char == '\t' and not in_quote:
+                char = ' '
+            lastchar = char
+            newline.append(char)
+
+        return ''.join(newline)
