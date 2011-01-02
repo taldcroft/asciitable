@@ -92,22 +92,26 @@ This method is fine in the short term but you always have to make sure
 start doing much with Python you will have ``PYTHONPATH`` conflicts and things
 will get messy.
 
-Testing
---------------
-
 
 Reading tables
 ----------------------------
-The majority of commonly encountered ASCII tables can be read with the |read|
-function using one of the `Extension Reader Classes`_ supplied with :mod:`asciitable`.  
-Here are a few very simple examples to give the basic flavor::
+The majority of commonly encountered ASCII tables can be easily read with the |read|
+function::
 
-   import asciitable
+  import asciitable
+  data = asciitable.read(table)
+
+where ``table`` is the name of a file, a string representation of a table, or a 
+list of table lines.  By default |read| will try to `guess the table format <#guess-table-format>`_
+by trying all the supported formats.  If this does not work (for unusually
+formatted tables) then one needs give asciitable additional hints about the
+format, for example::
+
    data = asciitable.read('t/nls1_stackinfo.dbout', data_start=2, delimiter='|')
    data = asciitable.read('t/simple.txt', quotechar="'")
    data = asciitable.read('t/simple4.txt', Reader=asciitable.NoHeader, delimiter='|')
    table = ['col1 col2 col3', '1 2 hi', '3 4.2 there']
-   data = asciitable.read(table)
+   data = asciitable.read(table, delimiter=" ")
 
 The |read| function accepts a number of parameters that specify the detailed
 table format.  Different Reader classes can define different defaults, so the
@@ -145,17 +149,16 @@ Commonly used parameters for ``read()``
   of |read| will then be a dictionary of :class:`~asciitable.Column` objects
   with each key for the corresponding named column.
   
-**guess**: try to guess table format (default=False)
+**guess**: try to guess table format (default=True)
   If set to True then |read| will try to guess the table format by cycling
   through a number of possible table format permuations and attemping to read
   the table in each case.  See the `Guess table format`_ section for further details.
   
 **delimiter** : column delimiter string
-  A one-character string used to separate fields which typically defaults to the space character.
-  Other common values might be "," or "|" or "\\t".  Note that when reading a table with 
-  tab-separated fields one needs to disable the whitespace stripping that normally 
-  takes place.  For this reason the separate :class:`~asciitable.Tab` reader is provided that
-  handles these specifics.
+  A one-character string used to separate fields which typically defaults to
+  the space character.  Other common values might be "\\s" (whitespace), "," or
+  "|" or "\\t" (tab).  A value of "\\s" allows any combination of the tab and
+  space characters to delimit columns.
 
 **comment** : regular expression defining a comment line in table
   If the ``comment`` regular expression matches the beginning of a table line then that line
@@ -281,31 +284,52 @@ disabling masked arrays.
 
 Guess table format
 ^^^^^^^^^^^^^^^^^^^^^^
+If the ``guess`` parameter in |read| is set to True (which is the default) then
+|read| will try to guess the table format by cycling through a number of
+possible table format permuations and attemping to read the table in each case.
+The first format which succeeds and will be used to read the table. To succeed
+the table must be successfully parsed by the Reader and satisfy the following
+column requirements:
 
-If the ``guess`` parameter in |read| is set to True then |read| will try to
-guess the table format by cycling through a number of possible table format
-permuations and attemping to read the table in each case. The first format
-which succeeds and will be used to read the table. To succeed the table must
-be successfully parsed by the Reader and result in at least two table columns,
-where none of the table column names are a float or int number. These
-requirements reduce the chance for a false positive where a table is
-successfully parsed into a single column using the wrong delimiter or where
-the first data row is incorrectly assumed to be the column names. The guess
-algorithm is not perfect but it does successfully guess the format for all the
-test cases included in the source distribution (see ``test/test_guess.py`` for
-examples).
+ * At least two table columns
+ * No column names are a float or int number
+ * No column names begin or end with space, comma, tab, single quote, double quote, or
+   a vertical bar (|). 
+
+These requirements reduce the chance for a false positive where a table is
+successfully parsed with the wrong format.
 
 The order of guessing is shown by this Python code::
   
   for Reader in (Rdb, Tab, Cds, Daophot, Ipac):
       read(Reader=Reader)
   for Reader in (CommentedHeader, BasicReader, NoHeader):
-      for delimiter in ("|", ",", " "):
+      for delimiter in ("|", ",", " ", "\\s"):
           for quotechar in ('"', "'"):
               read(Reader=Reader, delimiter=delimiter, quotechar=quotechar)
 
+If none of the guesses succeed in reading the table (subject to the column
+requirements) a final try is made using just the user-supplied parameters but
+without checking the column requirements.  In this way a table with only one
+column or column names that look like a number can still be successfully read.
 
+The guessing process respects any values of the Reader, delimiter, and
+quotechar parameters that were supplied to the read() function.  Any guesses
+that would conflict are skipped.  For example the call::
 
+ dat = asciitable.read(table, Reader=NoHeader, quotechar="'")
+
+would only try the four delimiter possibilities, skipping all the conflicting
+Reader and quotechar combinations.
+
+Guessing can be disabled in two ways::
+
+  import asciitable
+  data = asciitable.read(table)               # guessing enabled by default
+  data = asciitable.read(table, guess=False)  # disable for this call
+  asciitable.GUESS = False                    # set default to False globally
+  data = asciitable.read(table)               # guessing disabled
+  
 Converters
 ^^^^^^^^^^^^^^
 

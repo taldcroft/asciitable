@@ -1,5 +1,5 @@
 PROJECT = asciitable
-WWW = /proj/web-cxc/htdocs/contrib/$(PROJECT)
+WWW = /proj/web-cxc-dmz/htdocs/contrib/$(PROJECT)
 
 .PHONY: doc dist install
 

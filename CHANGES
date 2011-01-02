@@ -1,3 +1,16 @@
+0.5.0
+=====
+This release features a new function to guess the table format from the
+supported formats within asciitable.  This function is now called by default
+within asciitable.read().  In addition:
+
+- Added support for whitespace (tab or space) delimited tables by setting
+  the delimiter parameter to "\s".
+- Improved support for RDB tables by parsing the second line which specifies
+  column type and (optionally) width.  These values are written out if
+  available when writing an RDB table.
+- More rigorous checking of format compatibility for several table formats.
+
 0.4.0
 =====
 Add capability to handle bad or missing values in the input table.  This is

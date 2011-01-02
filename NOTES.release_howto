@@ -9,7 +9,7 @@ Test
 ------
 - Using env that includes python 2.6 and python 3 (typically ska on HEAD LAN)
 nosetests
-nosetests3
+nosetests3  (using skadev)
 
 - Using env which has /usr/bin/python2.4 (un-ska env on HEAD LAN)
 nosetests
@@ -41,7 +41,10 @@ make install
 
 - Confirm the site looks correct (version number, changes).
 - Download tarball and diff against the one in /pool14/aldcroft
-  http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz
+
+cd /pool14/aldcroft
+wget http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz
+diff asciitable.tar.gz asciitable-*.tar.gz
 
 Local git checkin, merge and github
 -----------------------------------
@@ -50,7 +53,7 @@ git commit -a
   Insert text from CHANGES, starting with a single line summary followed
   by a blank line
 
-git remote -a  # check origin
+git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
 
 git checkout master

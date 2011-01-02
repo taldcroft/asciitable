@@ -59,6 +59,16 @@ try:
 except AttributeError:
     izip = zip
 
+# Python 2.4 comptability: any() function is built-in only for 2.5 onward
+try:
+    any
+except NameError:
+    def any(vals):
+        for val in vals:
+            if val:
+                return True
+        return False
+
 # Default setting for guess parameter in read()
 GUESS = True
 
@@ -609,7 +619,7 @@ class BaseOutputter(object):
                 except (TypeError, ValueError):
                     col.converters.pop(0)
                 except IndexError:
-                    raise ValueError('Column {0} failed to convert'.format(col.name))
+                    raise ValueError('Column %s failed to convert' % col.name)
 
 class NumpyOutputter(BaseOutputter):
     """Output the table as a numpy.rec.recarray
@@ -801,7 +811,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
     bad_args = [x for x in kwargs if x not in extra_reader_pars]
     if bad_args:
-        raise ValueError('Supplied arg(s) {0} not allowed for get_reader()'.format(bad_args))
+        raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
 
     if 'delimiter' in kwargs:
         reader.header.splitter.delimiter = kwargs['delimiter']
@@ -848,7 +858,7 @@ def read(table, numpy=True, guess=None, **kwargs):
 
     :param table: input table (file name, list of strings, or single newline-separated string)
     :param numpy: use the :class:`NumpyOutputter` class else use :class:`BaseOutputter` (default=True)
-    :param guess: try to guess the table format (default=False)
+    :param guess: try to guess the table format (default=True)
     :param Reader: Reader class (default= :class:`~asciitable.BasicReader`)
     :param Inputter: Inputter class
     :param Outputter: Outputter class
@@ -872,7 +882,7 @@ def read(table, numpy=True, guess=None, **kwargs):
 
     bad_args = [x for x in kwargs if x not in extra_reader_pars]
     if bad_args:
-        raise ValueError('Supplied arg(s) {0} not allowed for get_reader()'.format(bad_args))
+        raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
 
     # Provide a simple way to choose between the two common outputters.  If an Outputter is
     # supplied in kwargs that will take precedence.
@@ -975,7 +985,7 @@ def get_writer(Writer=None, **kwargs):
 
     bad_args = [x for x in kwargs if x not in extra_writer_pars]
     if bad_args:
-        raise ValueError('Supplied arg(s) {0} not allowed for get_writer()'.format(bad_args))
+        raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
 
     if 'delimiter' in kwargs:
         writer.header.splitter.delimiter = kwargs['delimiter']
@@ -1015,7 +1025,7 @@ def write(table, output,  Writer=None, **kwargs):
 
     bad_args = [x for x in kwargs if x not in extra_writer_pars]
     if bad_args:
-        raise ValueError('Supplied arg(s) {0} not allowed for get_writer()'.format(bad_args))
+        raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
 
     reader_kwargs = dict((key, val) for key, val in kwargs.items()
                          if key in ('names', 'include_names', 'exclude_names'))
@@ -1748,7 +1758,7 @@ class RdbHeader(BaseHeader):
             raise ValueError('RDB header mismatch between number of column names and column types')
         
         if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in rdb_types):
-            raise ValueError('RDB types definitions do not all match [num](N|S): {0}'.format(rdb_types))
+            raise ValueError('RDB types definitions do not all match [num](N|S): %s' % rdb_types)
         
         names = set(self.names)
         if self.include_names is not None:

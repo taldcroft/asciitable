@@ -425,7 +425,11 @@ def get_testfiles(name=None):
         {'cols': ('a', 'b', 'c'),
          'name': 't/fill_values.txt',
          'nrows': 2,
-         'opts': {'delimiter': ','}}
+         'opts': {'delimiter': ','}},
+        {'name': 't/whitespace.dat',
+         'cols': ('quoted colname with tab\tinside', 'col2', 'col3'),
+         'nrows': 2,
+         'opts': {'delimiter': '\s'}},
          ]
 
     if name is not None:
