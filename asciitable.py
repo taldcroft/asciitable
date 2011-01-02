@@ -40,7 +40,7 @@ try:
 except ImportError:
     has_numpy = False
 
-class InconsistentTableError(Exception):
+class InconsistentTableError(ValueError):
     pass
 
 # Python 3 compatibility tweaks.  Should work back through 2.4.
@@ -58,6 +58,9 @@ try:
     izip = itertools.izip
 except AttributeError:
     izip = zip
+
+# Default setting for guess parameter in read()
+GUESS = True
 
 class Keyword(object):
     """Table keyword"""
@@ -837,7 +840,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
     return reader
 
-def read(table, numpy=True, guess=False, **kwargs):
+def read(table, numpy=True, guess=None, **kwargs):
     """Read the input ``table``.  If ``numpy`` is True (default) return the
     table in a numpy record array.  Otherwise return the table as a dictionary
     of column objects using plain python lists to hold the data.  Most of the
@@ -880,6 +883,8 @@ def read(table, numpy=True, guess=False, **kwargs):
         new_kwargs['Outputter'] = BaseOutputter
     new_kwargs.update(kwargs)
         
+    if guess is None:
+        guess = GUESS
     if guess:
         dat = _guess(table, new_kwargs)
     else:
@@ -896,22 +901,43 @@ def _is_number(x):
     return False
     
 def _guess(table, read_kwargs):
-    for guess_kwargs in _get_guess_kwargs_list():
-        try_kwargs = read_kwargs.copy()
-        try_kwargs.update(guess_kwargs)
+    """Try to read the table using various sets of keyword args. First try the
+    original args supplied in the read() call. Then try the standard guess
+    keyword args. For each key/val pair specified explicitly in the read()
+    call make sure that if there is a corresponding definition in the guess
+    then it must have the same val.  If not then skip this guess."""
+
+    # First try guessing
+    for guess_kwargs in [read_kwargs.copy()] + _get_guess_kwargs_list():
+        for key, val in read_kwargs.items():
+            # Do guess_kwargs.update(read_kwargs) except that if guess_args has
+            # a conflicting key/val pair then skip this guess entirely.
+            if key not in guess_kwargs:
+                guess_kwargs[key] = val
+            elif val != guess_kwargs[key]:
+                continue
+
         try:
-            reader = get_reader(**try_kwargs)
+            reader = get_reader(**guess_kwargs)
             dat = reader.read(table)
-            if len(reader.cols) <= 1:
-                raise ValueError
-            if any(_is_number(col.name) for col in reader.cols):
+            # When guessing impose additional requirements on column names and number of cols
+            bads = [" ", ",", "|", "\t", "'", '"']
+            if (len(reader.cols) <= 1 or
+                any(_is_number(col.name) or 
+                     len(col.name) == 0 or 
+                     col.name[0] in bads or 
+                     col.name[-1] in bads for col in reader.cols)):
                 raise ValueError
             return dat
-        except Exception, err:
+        except (InconsistentTableError, ValueError):
             pass
     else:
-        # failed all
-        raise ValueError('Unable to read table with guess=True.')
+        # failed all guesses, try the original read_kwargs without column requirements
+        try:
+            reader = get_reader(**read_kwargs)
+            return reader.read(table)
+        except (InconsistentTableError, ValueError):
+            raise InconsistentTableError('Unable to read table with guess=True.')
     
 def _get_guess_kwargs_list():
     guess_kwargs_list = [dict(Reader=Rdb),
@@ -1273,6 +1299,9 @@ class DaophotHeader(BaseHeader):
                 if match:
                     self.names.extend(match.group(1).split())
         
+        if not self.names:
+            raise InconsistentTableError('No column names found in DAOphot header')
+        
         names = set(self.names)
         if self.include_names is not None:
             names.intersection_update(self.include_names)
@@ -1369,6 +1398,8 @@ class CdsData(BaseData):
         """Skip over CDS header by finding the last section delimiter"""
         i_sections = [i for (i, x) in enumerate(lines)
                       if x.startswith('------') or x.startswith('=======')]
+        if not i_sections:
+            raise InconsistentTableError('No CDS section delimiter found')
         return lines[i_sections[-1]+1 : ]
 
 

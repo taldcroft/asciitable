@@ -12,7 +12,7 @@ Extension Reader Classes:
 * **Ipac**: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
 * **Memory**: table already in memory (list of lists, dict of lists, etc)
 * **NoHeader**: basic table with no header where columns are auto-named
-* **Rdb**: tab-separated values with an extra line after the column definition line
+* **Rdb**: tab-separated values with a column types line after the column names line
 * **Tab**: tab-separated values
 
 At the top level asciitable looks like many other ASCII table interfaces

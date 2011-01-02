@@ -29,10 +29,31 @@ def has_numpy(func):
 @has_numpy_and_not_has_numpy
 def test_read_all_files(numpy):
     for testfile in get_testfiles():
-        print('Reading %s' % testfile['name'])
+        print('\n\n******** READING %s' % testfile['name'])
         if testfile.get('requires_numpy') and not asciitable.has_numpy:
             return
-        table = asciitable.read(testfile['name'], numpy=numpy, **testfile['opts'])
+        for guess in (True, False):
+            test_opts = testfile['opts'].copy()
+            if 'guess' not in test_opts:
+                test_opts['guess'] = guess
+            table = asciitable.read(testfile['name'], numpy=numpy, **testfile['opts'])
+            assert_equal(table.dtype.names, testfile['cols'])
+            for colname in table.dtype.names:
+                assert_equal(len(table[colname]), testfile['nrows'])
+
+@has_numpy_and_not_has_numpy
+def test_guess_all_files(numpy):
+    for testfile in get_testfiles():
+        if not testfile['opts'].get('guess', True):
+            continue
+        print('\n\n******** READING %s' % testfile['name'])
+        if testfile.get('requires_numpy') and not asciitable.has_numpy:
+            return
+        # Copy read options except for Reader, delimiter and quotechar which 
+        # are guessed.
+        guess_opts = dict((k, v) for k, v in testfile['opts'].items()
+                          if k not in ('Reader', 'delimiter', 'quotechar'))
+        table = asciitable.read(testfile['name'], numpy=numpy, guess=True, **guess_opts)
         assert_equal(table.dtype.names, testfile['cols'])
         for colname in table.dtype.names:
             assert_equal(len(table[colname]), testfile['nrows'])
@@ -59,12 +80,12 @@ def test_daophot_header_keywords(numpy):
 @has_numpy_and_not_has_numpy
 @raises(asciitable.InconsistentTableError)
 def test_empty_table_no_header(numpy):
-    table = asciitable.read('t/no_data_without_header.dat', Reader=asciitable.NoHeader, numpy=numpy)
+    table = asciitable.read('t/no_data_without_header.dat', Reader=asciitable.NoHeader, numpy=numpy, guess=False)
 
 @has_numpy_and_not_has_numpy
 @raises(asciitable.InconsistentTableError)
 def test_wrong_quote(numpy):
-    table = asciitable.read('t/simple.txt', numpy=numpy)
+    table = asciitable.read('t/simple.txt', numpy=numpy, guess=False)
 
 @has_numpy_and_not_has_numpy
 @raises(asciitable.InconsistentTableError)
@@ -330,7 +351,7 @@ def get_testfiles(name=None):
                   'fBlim90'),
          'name': 't/nls1_stackinfo.dbout',
          'nrows': 58,
-         'opts': {'data_start': 2, 'delimiter': '|'}},
+         'opts': {'data_start': 2, 'delimiter': '|', 'guess': False}},
         {'cols': ('Index',
                   'RAh',
                   'RAm',
