@@ -53,6 +53,8 @@ git commit -a
   Insert text from CHANGES, starting with a single line "Release x.y.z" followed
   by a blank line and then the changes.
 
+git tag -a <VERSION>
+
 git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
 
@@ -63,6 +65,20 @@ git push [--dry-run] origin
 Update PyPI
 -----------
 python setup.py register
+
+Astrolib SVN
+------------
+(Note: svn => /usr/local/bin/svn doesn't have http or https support)
+
+cd /pool14/aldcroft
+mkdir astrolib
+cd astrolib
+/usr/bin/svn checkout http://svn6.assembla.com/svn/astrolib/trunk/asciitable
+rsync --dry-run -av --time-only /pool14/aldcroft/asciitable-*/ asciitable/
+cd asciitable
+/usr/bin/svn commit --username taldcroft
+# Password is from "assembla" on LastPass, begins with L...
+# Enter release commit message from git
 
 Post announcements
 -------------------
