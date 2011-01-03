@@ -50,8 +50,8 @@ Local git checkin, merge and github
 -----------------------------------
 git status
 git commit -a
-  Insert text from CHANGES, starting with a single line summary followed
-  by a blank line
+  Insert text from CHANGES, starting with a single line "Release x.y.z" followed
+  by a blank line and then the changes.
 
 git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
@@ -86,7 +86,5 @@ Post announcements
   Regards,
   Tom Aldcroft
 
-* Post the same to comp.lang.python.announce
-
-
-
+* Post the same to comp.lang.python.announce and astropython.org
+  http://groups.google.com/group/comp.lang.python.announce/topics?pli=1
