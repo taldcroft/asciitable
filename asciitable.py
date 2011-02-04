@@ -706,6 +706,11 @@ class BaseReader(object):
         :param table: table input
         :returns: output table
         """
+        # If ``table`` is a file then store the name in the ``data``
+        # attribute. 
+        if os.linesep not in table + '':
+            self.data.table_name = os.path.basename(table)
+            
         # Data and Header instances benefit from a little cross-coupling.  Header may need to
         # know about number of data columns for auto-column name generation and Data may
         # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
@@ -1346,6 +1351,20 @@ class FixedWidthSplitter(BaseSplitter):
 
 
 class CdsHeader(BaseHeader):
+    def __init__(self, readme=None):
+        """Initialize ReadMe filename.
+
+        :param readme: The ReadMe file to construct header from.
+        :type readme: String
+       
+        CDS tables have their header information in a separate file
+        named "ReadMe". The ``get_cols`` method will read the contents
+        of the ReadMe file given by ``self.readme`` and set the various
+        properties needed to read the data file. The data file name
+        will be the ``table`` passed to the ``read`` method.
+        """
+        self.readme = readme
+        
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a CDS
         header. 
@@ -1353,6 +1372,32 @@ class CdsHeader(BaseHeader):
         :param lines: list of table lines
         :returns: list of table Columns
         """
+        # Read header block for the table ``self.data.table_name`` from the read
+        # me file ``self.readme``.
+        if self.readme and self.data.table_name:
+            in_header = False
+            f = open(self.readme,"r")
+            # Header info is not in data lines but in a separate file.
+            lines = []
+            comment_lines = 0
+            for line in f:
+                line = line.strip()
+                if in_header:
+                    lines.append(line)
+                    if line.startswith('------') or line.startswith('======='):
+                         comment_lines += 1
+                         if comment_lines == 3: break
+                else:
+                    m = re.match(r'Byte-by-byte Description of file: (?P<name>\S*)',
+                            line, re.IGNORECASE)
+                    if m and m.group('name') == self.data.table_name:
+                        in_header = True
+                        lines.append(line)
+            else:
+                raise InconsistentTableError("Cant' find table {0} in {1}".format(
+                        self.data.table_name, self.readme))
+            f.close()
+                       
         for i_col_def, line in enumerate(lines):
             if re.match(r'Byte-by-byte Description', line, re.IGNORECASE):
                 break
@@ -1406,6 +1451,12 @@ class CdsData(BaseData):
     
     def process_lines(self, lines):
         """Skip over CDS header by finding the last section delimiter"""
+        # If the header has a ReadMe and data has a filename
+        # then no need to skip, as the data lines do not have header
+        # info. The ``read`` method adds the table_name to the ``data``
+        # attribute.
+        if self.header.readme and self.table_name:
+            return lines
         i_sections = [i for (i, x) in enumerate(lines)
                       if x.startswith('------') or x.startswith('=======')]
         if not i_sections:
@@ -1439,9 +1490,9 @@ class Cds(BaseReader):
     Code contribution to enhance the parsing to include metadata in a Reader.meta
     attribute would be welcome.
     """
-    def __init__(self):
+    def __init__(self, readme=None):
         BaseReader.__init__(self)
-        self.header = CdsHeader()
+        self.header = CdsHeader(readme)
         self.data = CdsData()
 
     def write(self, table=None):
