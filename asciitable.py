@@ -319,7 +319,7 @@ class BaseHeader(object):
 
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
-
+       
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
 
@@ -707,9 +707,14 @@ class BaseReader(object):
         :returns: output table
         """
         # If ``table`` is a file then store the name in the ``data``
-        # attribute. 
-        if os.linesep not in table + '':
-            self.data.table_name = os.path.basename(table)
+        # attribute. The ``table`` is a "file" if it is a string
+        # without the new line specific to the OS.
+        try:
+            if os.linesep not in table + '':
+                self.data.table_name = os.path.basename(table)
+        except TypeError:
+            # Not a string.
+            pass
             
         # Data and Header instances benefit from a little cross-coupling.  Header may need to
         # know about number of data columns for auto-column name generation and Data may
@@ -819,6 +824,7 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
         raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
 
     if 'delimiter' in kwargs:
+        print reader.data.splitter.__class__
         reader.header.splitter.delimiter = kwargs['delimiter']
         reader.data.splitter.delimiter = kwargs['delimiter']
     if 'comment' in kwargs:
@@ -1363,6 +1369,7 @@ class CdsHeader(BaseHeader):
         properties needed to read the data file. The data file name
         will be the ``table`` passed to the ``read`` method.
         """
+        BaseHeader.__init__(self)
         self.readme = readme
         
     def get_cols(self, lines):
@@ -1481,6 +1488,28 @@ class Cds(BaseReader):
       --------------------------------------------------------------------------------
         1 03 28 39.09
 
+    When ``Cds`` reader object is created with a ``readme`` parameter
+    passed to it at initialization, then when the ``read`` method is
+    executed with a table filename, the header information for the
+    specified table is taken from the ``readme`` file.  An
+    ``IncosistentTableError`` is raised if the ``readme`` file does not
+    have header information for the given table.
+    
+        >>> readme = "t/vizier/ReadMe"
+        >>> r = asciitable.Cds(readme)
+        >>> table = r.read("t/vizier/table1.dat")
+        >>> # table5.dat has the same ReadMe file
+        >>> table = r.read("t/vizier/table5.dat")
+
+    If no ``readme`` parameter is specified, then the header
+    information is assumed to be at the top of the given table.
+
+        >>> r = asciitable.Cds()
+        >>> table = r.read("t/cds.dat")
+        >>> #The following gives InconsistentTableError, since no
+        >>> #readme file was given and table1.dat does not have a header.
+        >>> table = r.read("t/vizier/table1.dat)
+    
     Caveats:
 
     * Format, Units, and Explanations are available in the ``Reader.cols`` attribute,
@@ -1489,6 +1518,7 @@ class Cds(BaseReader):
 
     Code contribution to enhance the parsing to include metadata in a Reader.meta
     attribute would be welcome.
+
     """
     def __init__(self, readme=None):
         BaseReader.__init__(self)
