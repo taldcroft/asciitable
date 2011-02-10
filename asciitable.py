@@ -824,7 +824,6 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
         raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
 
     if 'delimiter' in kwargs:
-        print reader.data.splitter.__class__
         reader.header.splitter.delimiter = kwargs['delimiter']
         reader.data.splitter.delimiter = kwargs['delimiter']
     if 'comment' in kwargs:
