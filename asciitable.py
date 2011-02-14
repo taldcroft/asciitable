@@ -368,7 +368,7 @@ class BaseHeader(object):
             re_comment = re.compile(self.comment)
         # Yield non-comment lines
         for line in lines:
-            if line and not self.comment or not re_comment.match(line):
+            if line and (not self.comment or not re_comment.match(line)):
                 yield line
 
     def write(self, lines, table):
@@ -1491,7 +1491,7 @@ class Cds(BaseReader):
     passed to it at initialization, then when the ``read`` method is
     executed with a table filename, the header information for the
     specified table is taken from the ``readme`` file.  An
-    ``IncosistentTableError`` is raised if the ``readme`` file does not
+    ``InconsistentTableError`` is raised if the ``readme`` file does not
     have header information for the given table.
     
         >>> readme = "t/vizier/ReadMe"

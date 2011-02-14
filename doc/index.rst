@@ -40,13 +40,12 @@ Requirements
 Download
 ---------------------------
 
-The latest release of the :mod:`asciitable` package is available in the
-`<http://cxc.harvard.edu/contrib/asciitable/downloads>`_ directory as
-``asciitable.tar.gz``.  Previous releases are also available there.
+The latest release of the :mod:`asciitable` package is available as
+`asciitable.tar.gz <http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz>`_.
 
-The latest git repository version is available on github::
+The latest git repository version is available at `<https://github.com/taldcroft/asciitable>`_ or with::
 
-  git clone http://github.com/taldcroft/asciitable.git
+  git clone git://github.com/taldcroft/asciitable.git
 
 Installation and test
 ---------------------

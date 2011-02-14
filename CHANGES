@@ -1,3 +1,19 @@
+0.5.1
+=====
+This release is primarily an update to the CDS format reader with code
+contributed by Prasanth Haridas Nair.  It now can handle separate ReadMe and
+data files.  The ReadMe file specifies the column information for one or more
+associated data files.  For example:
+
+  >>> readme = "t/vizier/ReadMe"
+  >>> r = asciitable.Cds(readme)
+  >>> table = r.read("t/vizier/table1.dat")
+  >>> # table5.dat has the same ReadMe file
+  >>> table = r.read("t/vizier/table5.dat")
+
+In addition a minor bug was fixed where blank table lines were not
+being properly ignored.
+
 0.5.0
 =====
 This release features a new function to guess the table format from the
