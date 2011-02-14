@@ -73,9 +73,10 @@ Astrolib SVN
 cd /pool14/aldcroft
 mkdir astrolib
 cd astrolib
-/usr/bin/svn checkout http://svn6.assembla.com/svn/astrolib/trunk/asciitable
-rsync --dry-run -av --time-only /pool14/aldcroft/asciitable-*/ asciitable/
+/usr/bin/svn checkout https://svn6.assembla.com/svn/astrolib/trunk/asciitable
+rsync [--dry-run ] -av --size-only /pool14/aldcroft/asciitable-*/ asciitable/
 cd asciitable
+/usr/bin/svn add ...
 /usr/bin/svn commit --username taldcroft
 # Password is from "assembla" on LastPass, begins with L...
 # Enter release commit message from git
