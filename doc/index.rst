@@ -550,8 +550,8 @@ The outer layer represents rows while the inner layer represents columns.
     data = [[1, 2,   3      ], 
             [4, 5.2, 6.1    ], 
             [8, 9,   'hello']]
-    asciitable.write('table.dat', data)
-    asciitable.write('table.dat', data, names=['x', 'y', 'z'], exclude_names=['y'])
+    asciitable.write(data, 'table.dat')
+    asciitable.write(data, 'table.dat', names=['x', 'y', 'z'], exclude_names=['y'])
 
 Dict of sequences
 +++++++++++++++++++++++
