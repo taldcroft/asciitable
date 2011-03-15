@@ -566,7 +566,7 @@ this example and the previous example.
     data = {'x': [1, 2, 3], 
             'y': [4, 5.2, 6.1], 
             'z': [8, 9, 'hello world']}
-    asciitable.write('table.dat', data)
+    asciitable.write(data, 'table.dat')
 
 
 Commonly used parameters for ``write()``
