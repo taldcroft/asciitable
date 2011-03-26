@@ -273,6 +273,18 @@ def test_fill_values_list(numpy):
     else:
         assert_equal(data['a'],[42,42])
 
+@has_numpy_and_not_has_numpy
+def test_masking_Cds(numpy):
+    f = 't/cds.dat'
+    testfile = get_testfiles(f)
+    data = asciitable.read(f, numpy=numpy, 
+                           **testfile['opts'])
+    if numpy:
+        assert_true(data['AK'].mask[0])
+        assert_true(not data['Fit'].mask[0])
+    else:
+        assert_true(math.isnan(tab['AK'][0]))
+        assert_true(not math.isnan(tab['Fit'][0]))
 
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
