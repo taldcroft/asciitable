@@ -399,7 +399,7 @@ class BaseData(object):
     write_spacer_lines = ['ASCIITABLE_WRITE_SPACER_LINE']
     formats = {}
     default_formatter = str
-    fill_values = None
+    fill_values = []
     fill_include_names = None
     fill_exclude_names = None
     
@@ -443,7 +443,7 @@ class BaseData(object):
         which column using ``fill_include_names`` and ``fill_exclude_names``.
         In the second step all replacements are done for the appropriate columns.
         """
-        if self.fill_values is not None:
+        if self.fill_values:
             self._set_fill_values(cols)
             self._set_masks(cols)
     
@@ -455,7 +455,7 @@ class BaseData(object):
         fill_values = <fill_spec> or list of <fill_spec>'s
 
         """
-        if self.fill_values is not None:
+        if self.fill_values:
             #if input is only one <fill_spec>, then make it a list
             try:
                 self.fill_values[0] + ''
@@ -484,7 +484,7 @@ class BaseData(object):
 
     def _set_masks(self, cols):
         """Replace string values in col.str_vales and set masks"""
-        if self.fill_values is not None:
+        if self.fill_values:
             for col in (col for col in cols if col.fill_values):
                 col.mask = [False] * len(col.str_vals)
                 for i, str_val in ((i, x) for i, x in enumerate(col.str_vals) if x in col.fill_values):
@@ -1428,6 +1428,11 @@ class CdsHeader(BaseHeader):
                 col.end = int(match.group('end'))
                 col.units = match.group('units')
                 col.descr = match.group('descr')
+                col.format = match.group('format')
+                if col.descr.startswith('?') and col.format[0] in ('F', 'E'):
+                    self.data.fill_values.append(('', 'nan', match.group('name')))
+                if col.descr.startswith('?=') and col.format[0] in ('F', 'E'):
+                    self.data.fill_values.append(([col.descr.split()[0][2:]], 'nan', match.group('name')))
                 cols.append(col)
             else:  # could be a continuation of the previous col's description
                 if cols:
