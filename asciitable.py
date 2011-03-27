@@ -668,7 +668,7 @@ class NumpyOutputter(BaseOutputter):
             maarr = recarr.view(numpy.ma.MaskedArray)
             for col in cols:
                 if col.fill_values:
-                    maarr[col.name][numpy.array(col.mask)] = numpy.ma.masked
+                    maarr[col.name] = numpy.ma.masked_where(col.mask, maarr[col.name])
             return maarr
         else:
             return recarr
@@ -1432,7 +1432,7 @@ class CdsHeader(BaseHeader):
                 if col.descr.startswith('?') and col.format[0] in ('F', 'E'):
                     self.data.fill_values.append(('', 'nan', match.group('name')))
                 if col.descr.startswith('?=') and col.format[0] in ('F', 'E'):
-                    self.data.fill_values.append(([col.descr.split()[0][2:]], 'nan', match.group('name')))
+                    self.data.fill_values.append((col.descr.split()[0][2:], 'nan', match.group('name')))
                 cols.append(col)
             else:  # could be a continuation of the previous col's description
                 if cols:
