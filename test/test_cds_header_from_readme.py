@@ -1,5 +1,6 @@
 # run from main directory; not from test/
 import asciitable
+import math
 readme = "t/vizier/ReadMe"
 
 def test_header_from_readme():
@@ -5296,7 +5297,10 @@ def test_header_from_readme():
           0.670, 
           0.313] 
     for i, val in enumerate(table.field('Q')):
-        assert val == Q[i]
+        if math.isnan(val):
+            assert Q[i] == -9.999 #the text value for a missing value in that table
+        else:
+            assert val == Q[i]
 
 if __name__ == "__main__": # run from main directory; not from test/
     test_header_from_readme()

@@ -1,5 +1,6 @@
 import re
 import glob
+import math
 from nose.tools import *
 
 import asciitable
@@ -283,8 +284,8 @@ def test_masking_Cds(numpy):
         assert_true(data['AK'].mask[0])
         assert_true(not data['Fit'].mask[0])
     else:
-        assert_true(math.isnan(tab['AK'][0]))
-        assert_true(not math.isnan(tab['Fit'][0]))
+        assert_true(math.isnan(data['AK'][0]))
+        assert_true(not math.isnan(data['Fit'][0]))
 
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
