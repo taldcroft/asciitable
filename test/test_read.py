@@ -16,7 +16,7 @@ except ImportError:
     try:
         from numpy import isnan
     except ImportError:
-        print 'Tests requiring isnan will fail'
+        print('Tests requiring isnan will fail')
 
 def has_numpy_and_not_has_numpy(func):
     """Perform tests that should work for has_numpy==True and has_numpy==False"""

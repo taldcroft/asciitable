@@ -7,7 +7,7 @@ except ImportError:
     try:
         from numpy import isnan
     except ImportError:
-        print 'Tests requiring isnan will fail'
+        print('Tests requiring isnan will fail')
     
 readme = "t/vizier/ReadMe"
 
