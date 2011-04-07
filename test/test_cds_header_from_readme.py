@@ -1,6 +1,14 @@
 # run from main directory; not from test/
 import asciitable
-import math
+
+try:
+    from math import isnan
+except ImportError:
+    try:
+        from numpy import isnan
+    except ImportError:
+        print 'Tests requiring isnan will fail'
+    
 readme = "t/vizier/ReadMe"
 
 def test_header_from_readme():
@@ -5297,7 +5305,7 @@ def test_header_from_readme():
           0.670, 
           0.313] 
     for i, val in enumerate(table.field('Q')):
-        if math.isnan(val):
+        if isnan(val):
             assert Q[i] == -9.999 #the text value for a missing value in that table
         else:
             assert val == Q[i]
