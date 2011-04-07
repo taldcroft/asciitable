@@ -1,3 +1,22 @@
+0.5.2
+=====
+Enhance CDS reader support for missing values and fix a bug in NumpyOutputter
+related to masking.
+
+CDS reader
+----------
+Cds tables can contain missing values, realized as empty stings or with special
+values. These special values are then given in the first few characters of the
+column description in the form ?=value.  For columns with float values (type E
+and F) asciitable now implements an automated setting for fill_values, that masks
+these spacial values in a masked array. Nothing has changed for ascii or
+integer columns as these do not have a natural value which can be used to
+replace the masked or missing values in a transparent way.
+
+Bug fix
+-------
+Fix a bug in NumpyOutputter if a mask is defined by no value is masked.
+
 0.5.1
 =====
 This release is primarily an update to the CDS format reader with code

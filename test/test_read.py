@@ -10,6 +10,14 @@ if asciitable.has_numpy:
 else:
     numpy_cases = (False,)
 
+try:
+    from math import isnan
+except ImportError:
+    try:
+        from numpy import isnan
+    except ImportError:
+        print 'Tests requiring isnan will fail'
+
 def has_numpy_and_not_has_numpy(func):
     """Perform tests that should work for has_numpy==True and has_numpy==False"""
     def wrap():
@@ -284,8 +292,8 @@ def test_masking_Cds(numpy):
         assert_true(data['AK'].mask[0])
         assert_true(not data['Fit'].mask[0])
     else:
-        assert_true(math.isnan(data['AK'][0]))
-        assert_true(not math.isnan(data['Fit'][0]))
+        assert_true(isnan(data['AK'][0]))
+        assert_true(not isnan(data['Fit'][0]))
 
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
