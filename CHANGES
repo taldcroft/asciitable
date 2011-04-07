@@ -16,7 +16,7 @@ replace the masked or missing values in a transparent way.
 Bug fix
 -------
 Fix a bug in NumpyOutputter if a mask is defined by no value is masked.
-
+ 
 0.5.1
 =====
 This release is primarily an update to the CDS format reader with code
