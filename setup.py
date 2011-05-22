@@ -34,7 +34,6 @@ setup(name='asciitable',
       author='Tom Aldcroft',
       author_email='aldcroft@head.cfa.harvard.edu',
       url='http://cxc.harvard.edu/contrib/asciitable',
-      download_url='http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz',
       license='BSD',
       platforms=['any'],
       classifiers=[
