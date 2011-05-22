@@ -114,7 +114,7 @@ class BaseInputter(object):
         try:
             if hasattr(table, 'read'):
                 table = table.read()
-            elif os.linesep not in table + '':
+            elif '\n' not in table and '\r' not in table + '':
                 table = open(table, 'r').read()
             lines = table.splitlines()
         except TypeError:

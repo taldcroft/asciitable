@@ -58,11 +58,7 @@ def check_write_table(test_def, table):
     asciitable.write(table, out, **test_def['kwargs'])
     print('Expected:\n%s' % test_def['out'])
     print('Actual:\n%s' % out.getvalue())
-    if out.getvalue() != test_def['out']:
-        f = open('out.dat', 'w')
-        f.write(out.getvalue())
-        f.close()
-    assert(out.getvalue() == test_def['out'])
+    assert(out.getvalue().splitlines() == test_def['out'].splitlines())
 
 def test_write_table():
     table = asciitable.get_reader(Reader=asciitable.Daophot)
