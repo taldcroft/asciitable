@@ -5,16 +5,16 @@ WWW = /proj/web-cxc-dmz/htdocs/contrib/$(PROJECT)
 
 dist:
 	rm -rf dist
-	python setup.py sdist
+	rm -f MANIFEST
+	python setup.py sdist --format=zip
+	python setup.py sdist --format=gztar
 
 doc:
 	cd doc; \
 	make html
 
-install: doc dist
+install: doc
 	rsync -av doc/_build/html/ $(WWW)/
-	cp -p dist/$(PROJECT)-*.tar.gz $(WWW)/downloads/
-	cp -p dist/$(PROJECT)-*.tar.gz $(WWW)/downloads/$(PROJECT).tar.gz
 
 install_dev: doc dist
 	rsync -av doc/_build/html/ $(WWW)/dev

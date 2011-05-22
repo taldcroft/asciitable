@@ -1,3 +1,14 @@
+0.6.0
+=====
+Add support and testing for MacOS and Windows.
+
+- Fixed issue reading a table from a string under Windows.
+- Added testing using Python 2.7 for Windows XP and MacOS 10.6.
+- Changed Python 3 testing on linux from 3.1 to 3.2.
+- Added pip and easy_install instructions to the installation documentation.
+- Added __version__ variable to module.
+- Removed download_url from setup.py since tar file is hosted on PyPI now.
+
 0.5.2
 =====
 Enhance CDS reader support for missing values and fix a bug in NumpyOutputter

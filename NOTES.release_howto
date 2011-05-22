@@ -4,47 +4,56 @@ Release procedure
 Edit/develop in a new git branch
 --------------------------------
 git checkout -b <newbranch>
+git push origin <newbranch>
 
 Test
 ------
-- Using env that includes python 2.6 and python 3 (typically ska on HEAD LAN)
-nosetests
-nosetests3  (using skadev)
 
-- Using env which has /usr/bin/python2.4 (un-ska env on HEAD LAN)
-nosetests
+Linux
+^^^^^^
+/usr/bin/nosetests   # Python 2.4 on CentOS-5 system
+set pyroot=$HOME/soft/ActivePython
+$pyroot/2.6/bin/nosetests
+$pyroot/2.7/bin/nosetests
+$pyroot/3.2/bin/nosetests
+
+Mac / windows
+^^^^^^^^^^^^^^
+cd ~/git
+[ git clone git@github.com:taldcroft/asciitable.git ]
+cd asciitable
+git checkout <newbranch>
+git pull 
 
 Prepare for release
 --------------------
+- Update __version__ in asciitable.py
 - Update VERSION
 - Update CHANGES
+make doc
 
 Make the source distribution and confirm the correct files
 ------------------------------------------------------------
-rm -rf dist
-rm MANIFEST
-python setup.py sdist
+make dist
 
-Install the source distribution to devska and test
+Install the source distribution and test
 --------------------------------------------------
 <in a new window>
 cp dist/*.tar.gz /pool14/aldcroft/
 cd /pool14/aldcroft
 tar xvf asciitable-*.tar.gz
 cd asciitable-*
-nosetests
-nosetests3
 
-Install new source tarball and test
+/usr/bin/nosetests
+
+more asciitable.py   #confirm __version__ !!
+
+Install new source docs
 ---------------------------------------------
+cd ~/git/asciitable
 make install
 
 - Confirm the site looks correct (version number, changes).
-- Download tarball and diff against the one in /pool14/aldcroft
-
-cd /pool14/aldcroft
-wget http://cxc.harvard.edu/contrib/asciitable/downloads/asciitable.tar.gz
-diff asciitable.tar.gz asciitable-*.tar.gz
 
 Local git checkin, merge and github
 -----------------------------------
@@ -65,6 +74,9 @@ git push [--dry-run] origin
 Update PyPI
 -----------
 python setup.py register
+python setup.py sdist [--format=..] upload
+
+- Download tarball and diff against the one in /pool14/aldcroft
 
 Astrolib SVN
 ------------

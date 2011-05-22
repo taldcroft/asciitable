@@ -46,10 +46,8 @@ Windows XP  2.7
 =========== ===================
 
 * Though not required `NumPy <http://numpy.scipy.org/>`_ is recommended.  
-* NumPy versions 1.3 (Python 2) and 1.5 (Python 3) have been tested
+* NumPy versions 1.2 and 1.3 (Python 2) and 1.5 (Python 3) have been tested
   in previous releases, while current testing uses NumPy 1.6.
-
-
 
 Download
 ---------------------------
