@@ -62,19 +62,17 @@ git commit -a
   Insert text from CHANGES, starting with a single line "Release x.y.z" followed
   by a blank line and then the changes.
 
-git tag -a <VERSION>
-
 git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
 
 git checkout master
+git tag -a <VERSION>
 git merge <newbranch>
 git push [--dry-run] origin 
 
 Update PyPI
 -----------
-python setup.py register
-python setup.py sdist [--format=..] upload
+make pypi
 
 - Download tarball and diff against the one in /pool14/aldcroft
 
@@ -91,7 +89,8 @@ cd asciitable
 /usr/bin/svn add ...
 /usr/bin/svn commit --username taldcroft
 # Password is from "assembla" on LastPass, begins with L...
-# Enter release commit message from git
+# Enter release commit message from git starting with:
+asciitable <VERSION>
 
 Post announcements
 -------------------

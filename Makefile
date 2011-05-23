@@ -6,8 +6,13 @@ WWW = /proj/web-cxc-dmz/htdocs/contrib/$(PROJECT)
 dist:
 	rm -rf dist
 	rm -f MANIFEST
-	python setup.py sdist --format=zip
 	python setup.py sdist --format=gztar
+
+pypi:
+	rm -rf dist
+	rm -f MANIFEST
+	python setup.py sdist --format=zip upload
+	python setup.py sdist --format=gztar upload
 
 doc:
 	cd doc; \
