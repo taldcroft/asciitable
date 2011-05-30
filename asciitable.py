@@ -28,13 +28,14 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 import os
 import sys
 import re
 import csv
 import itertools
+import fnmatch
 
 try:
     import numpy
@@ -810,7 +811,8 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
     """
     if Reader is None:
         Reader = BasicReader
-    reader = Reader()
+    reader_kwargs = dict([k, v] for k, v in kwargs.items() if k not in extra_reader_pars)
+    reader = Reader(**reader_kwargs)
 
     if Inputter is not None:
         reader.inputter = Inputter()
@@ -820,10 +822,6 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
 
     if Outputter is not None:
         reader.outputter = Outputter()
-
-    bad_args = [x for x in kwargs if x not in extra_reader_pars]
-    if bad_args:
-        raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
 
     if 'delimiter' in kwargs:
         reader.header.splitter.delimiter = kwargs['delimiter']
@@ -892,10 +890,6 @@ def read(table, numpy=True, guess=None, **kwargs):
 
     """
 
-    bad_args = [x for x in kwargs if x not in extra_reader_pars]
-    if bad_args:
-        raise ValueError('Supplied arg(s) %s not allowed for get_reader()' % bad_args)
-
     # Provide a simple way to choose between the two common outputters.  If an Outputter is
     # supplied in kwargs that will take precedence.
     new_kwargs = {}
@@ -951,7 +945,7 @@ def _guess(table, read_kwargs):
                      col.name[-1] in bads for col in reader.cols)):
                 raise ValueError
             return dat
-        except (InconsistentTableError, ValueError):
+        except (InconsistentTableError, ValueError, TypeError):
             pass
     else:
         # failed all guesses, try the original read_kwargs without column requirements
@@ -1394,13 +1388,23 @@ class CdsHeader(BaseHeader):
                     lines.append(line)
                     if line.startswith('------') or line.startswith('======='):
                          comment_lines += 1
-                         if comment_lines == 3: break
+                         if comment_lines == 3:
+                             break
                 else:
-                    m = re.match(r'Byte-by-byte Description of file: (?P<name>\S*)',
+                    m = re.match(r'Byte-by-byte Description of file: (?P<name>.+)$',
                             line, re.IGNORECASE)
-                    if m and m.group('name') == self.data.table_name:
-                        in_header = True
-                        lines.append(line)
+                    if m:
+                        # Split 'name' in case in contains multiple files
+                        names = [s for s in re.split('[, ]+', m.group('name'))
+                                                                        if s]
+                        # Iterate on names to find if one matches the tablename
+                        # including wildcards.
+                        for pattern in names:
+                            if fnmatch.fnmatch(self.data.table_name, pattern):
+                                in_header = True
+                                lines.append(line)
+                                break
+
             else:
                 raise InconsistentTableError("Cant' find table {0} in {1}".format(
                         self.data.table_name, self.readme))
@@ -1494,6 +1498,21 @@ class Cds(BaseReader):
       --------------------------------------------------------------------------------
         1 03 28 39.09
 
+    Basic usage
+    -----------
+
+    Use the ``asciitable.read()`` function as normal, with an optional ``readme``
+    parameter indicating the CDS ReadMe file.  If not supplied it is assumed that
+    the header information is at the top of the given table.  Examples::
+
+       >>> table = asciitable.read("t/cds.dat")
+       >>> table = asciitable.read("t/vizier/table1.dat", readme="t/vizier/ReadMe")
+       >>> table = asciitable.read("t/cds/multi/lhs2065.dat", readme="t/cds/multi/ReadMe")
+       >>> table = asciitable.read("t/cds/glob/lmxbrefs.dat", readme="t/cds/glob/ReadMe")
+
+    Using a reader object    
+    ---------------------
+
     When ``Cds`` reader object is created with a ``readme`` parameter
     passed to it at initialization, then when the ``read`` method is
     executed with a table filename, the header information for the
@@ -1502,7 +1521,7 @@ class Cds(BaseReader):
     have header information for the given table.
     
         >>> readme = "t/vizier/ReadMe"
-        >>> r = asciitable.Cds(readme)
+        >>> r = asciitable.get_reader(asciitable.Cds, readme=readme)
         >>> table = r.read("t/vizier/table1.dat")
         >>> # table5.dat has the same ReadMe file
         >>> table = r.read("t/vizier/table5.dat")
@@ -1510,7 +1529,7 @@ class Cds(BaseReader):
     If no ``readme`` parameter is specified, then the header
     information is assumed to be at the top of the given table.
 
-        >>> r = asciitable.Cds()
+        >>> r = asciitable.get_reader(asciitable.Cds)
         >>> table = r.read("t/cds.dat")
         >>> #The following gives InconsistentTableError, since no
         >>> #readme file was given and table1.dat does not have a header.
