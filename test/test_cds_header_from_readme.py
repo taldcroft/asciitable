@@ -30,7 +30,7 @@ def test_multi_header():
         table = read_table(readme, data)
         assert_equal(len(table), 14390)
         assert_almost_equal(table['Lambda'][-1], 9210.00)
-        assert_almost_equal(table['Fnu'][-1], 14.2352)
+        assert_equal(table['Fnu'][-1], '14.2352')
 
 def test_glob_header():
     readme = 't/cds/glob/ReadMe'

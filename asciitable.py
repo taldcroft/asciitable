@@ -91,12 +91,14 @@ class Column(object):
 
     * **name** : column name
     * **index** : column index (first column has index=0, second has index=1, etc)
+    * **type** : column type ('any', 'numeric', 'float', 'int', 'str')
     * **str_vals** : list of column values as strings
     * **data** : list of converted column values
     """
     def __init__(self, name, index):
         self.name = name
         self.index = index
+        self.type = 'any'       # can be float, int or string
         self.str_vals = []
         self.fill_values = {}
 
@@ -386,6 +388,17 @@ class BaseHeader(object):
         """Return the column names of the table"""
         return tuple(col.name for col in self.cols)
 
+    def get_type_map_key(self, col):
+        return col.raw_type
+
+    def get_col_type(self, col):
+        try:
+            type_map_key = self.get_type_map_key(col)
+            return self.col_type_map[type_map_key.lower()]
+        except KeyError:
+            raise ValueError('Unknown data type ""%s"" for column "%s"' % (
+                    col.raw_type, col.name))
+
 
 class BaseData(object):
     """Base table data reader.
@@ -597,9 +610,12 @@ class BaseOutputter(object):
     table data are stored as plain python lists within the column objects.
     """
     converters = {}
-    default_converter = [convert_list(int),
-                         convert_list(float),
-                         convert_list(str)]
+    default_converter = {'any': [convert_list(x) for x in (int, float, str)],
+                         'num': [convert_list(x) for x in (int, float)],
+                         'int': [convert_list(int)],
+                         'float': [convert_list(float)],
+                         'str': [convert_list(str)]
+                         }
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -609,7 +625,8 @@ class BaseOutputter(object):
 
     def _convert_vals(self, cols):
         for col in cols:
-            converters = self.converters.get(col.name, self.default_converter)
+            converters = self.converters.get(col.name,
+                                             self.default_converter[col.type])
             # Make a copy of converters and make sure converters is a list
             try:
                 col.converters = converters[:]
@@ -627,8 +644,6 @@ class BaseOutputter(object):
 class NumpyOutputter(BaseOutputter):
     """Output the table as a numpy.rec.recarray
 
-    :param default_converter: default list of functions tried (in order) to convert a column
-    
     Missing or bad data values are handled at two levels.  The first is in
     the data reading step where if ``data.fill_values`` is set then any
     occurences of a bad value are replaced by the correspond fill value.
@@ -659,9 +674,12 @@ class NumpyOutputter(BaseOutputter):
     default_masked_array = False
 
     if has_numpy:
-        default_converter = [convert_numpy(numpy.int),
-                             convert_numpy(numpy.float),
-                             convert_numpy(numpy.str)]
+        default_converter = {'any': [convert_numpy(x) for x in (int, float, str)],
+                             'num': [convert_numpy(x) for x in (int, float)],
+                             'int': [convert_numpy(int)],
+                             'float': [convert_numpy(float)],
+                             'str': [convert_numpy(str)]
+                             }
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -1352,6 +1370,18 @@ class FixedWidthSplitter(BaseSplitter):
 
 
 class CdsHeader(BaseHeader):
+    col_type_map = {'e': 'float',
+                    'f': 'float',
+                    'i': 'int',
+                    'a': 'str'}
+
+    def get_type_map_key(self, col):
+        match = re.match(r'\d*(\S)', col.raw_type.lower())
+        if not match:
+            raise ValueError('Unrecognized CDS format "%s" for column "%s"' % (
+                    col.raw_type, col.name))
+        return match.group(1)
+
     def __init__(self, readme=None):
         """Initialize ReadMe filename.
 
@@ -1367,6 +1397,7 @@ class CdsHeader(BaseHeader):
         BaseHeader.__init__(self)
         self.readme = readme
         
+
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a CDS
         header. 
@@ -1391,11 +1422,11 @@ class CdsHeader(BaseHeader):
                          if comment_lines == 3:
                              break
                 else:
-                    m = re.match(r'Byte-by-byte Description of file: (?P<name>.+)$',
+                    match = re.match(r'Byte-by-byte Description of file: (?P<name>.+)$',
                             line, re.IGNORECASE)
-                    if m:
+                    if match:
                         # Split 'name' in case in contains multiple files
-                        names = [s for s in re.split('[, ]+', m.group('name'))
+                        names = [s for s in re.split('[, ]+', match.group('name'))
                                                                         if s]
                         # Iterate on names to find if one matches the tablename
                         # including wildcards.
@@ -1434,11 +1465,23 @@ class CdsHeader(BaseHeader):
                 col.end = int(match.group('end'))
                 col.units = match.group('units')
                 col.descr = match.group('descr')
-                col.format = match.group('format')
-                if col.descr.startswith('?') and col.format[0] in ('F', 'E'):
-                    self.data.fill_values.append(('', 'nan', match.group('name')))
-                if col.descr.startswith('?=') and col.format[0] in ('F', 'E'):
-                    self.data.fill_values.append((col.descr.split()[0][2:], 'nan', match.group('name')))
+                col.raw_type = match.group('format')
+                col.type = self.get_col_type(col)
+
+                match = re.match(r'\? (?P<equal> =)? (?P<nullval> \S*)', col.descr, re.VERBOSE)
+                if match:
+                    if col.type == 'float':
+                        fillval = 'nan'
+                    else:
+                        fillval = '-999'
+                    if match.group('nullval') == '':
+                        col.null = ''
+                    elif match.group('nullval') == '-':
+                        col.null = '---'
+                    else:
+                        col.null = match.group('nullval')
+                    self.data.fill_values.append((col.null, fillval, col.name))
+
                 cols.append(col)
             else:  # could be a continuation of the previous col's description
                 if cols:
@@ -1598,6 +1641,19 @@ class IpacHeader(BaseHeader):
     """IPAC table header"""
     comment = r'\\'
     splitter_class = BaseSplitter
+    col_type_map = {'int': 'int',
+                    'long': 'int',
+                    'double': 'float',
+                    'float': 'float',
+                    'real': 'float',
+                    'char': 'str',
+                    'date': 'str',
+                    'i': 'int',
+                    'l': 'int',
+                    'd': 'float',
+                    'f': 'float',
+                    'r': 'real',
+                    'c': 'str'}
     
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
@@ -1639,11 +1695,19 @@ class IpacHeader(BaseHeader):
             col.start = start
             col.end = start + len(name) 
             if len(header_vals) > 1:
-                col.type = header_vals[1][i].strip(' -')
+                col.raw_type = header_vals[1][i].strip(' -')
+                col.type = self.get_col_type(col)
             if len(header_vals) > 2:
                 col.units = header_vals[2][i].strip() # Can't strip dashes here
             if len(header_vals) > 3:
-                col.null = header_vals[3][i].strip() # Can't strip dashes here
+                null = header_vals[3][i].strip()
+                if null.lower() != 'null':
+                    col.null = null  # Can't strip dashes here
+                    if col.type == 'float':
+                        fillval = 'nan'
+                    else:
+                        fillval = '-999'
+                    self.data.fill_values.append((col.null, fillval, col.name))
             start = col.end + 1
             cols.append(col)
         
@@ -1734,7 +1798,7 @@ class Memory(BaseReader):
         if hasattr(table, 'keywords'):
             self.keywords = table.keywords
 
-        self.outputter.default_converter = lambda vals: vals
+        self.outputter.default_converter = {'any': lambda vals: vals}
         self.table = self.outputter(cols)
         self.cols = self.header.cols
 
@@ -1843,6 +1907,12 @@ class MemoryData(BaseData):
         return lines
 
 class RdbHeader(BaseHeader):
+    col_type_map = {'n': 'num',
+                    's': 'str'}
+
+    def get_type_map_key(self, col):
+        return col.raw_type[-1]
+
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
         
@@ -1858,13 +1928,13 @@ class RdbHeader(BaseHeader):
         header_vals_list = [hl for _, hl in zip(range(2), self.splitter(header_lines))]
         if len(header_vals_list) != 2:
             raise ValueError('RDB header requires 2 lines')
-        self.names, rdb_types = header_vals_list
+        self.names, raw_types = header_vals_list
 
-        if len(self.names) != len(rdb_types):
+        if len(self.names) != len(raw_types):
             raise ValueError('RDB header mismatch between number of column names and column types')
         
-        if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in rdb_types):
-            raise ValueError('RDB types definitions do not all match [num](N|S): %s' % rdb_types)
+        if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in raw_types):
+            raise ValueError('RDB types definitions do not all match [num](N|S): %s' % raw_types)
         
         names = set(self.names)
         if self.include_names is not None:
@@ -1874,8 +1944,9 @@ class RdbHeader(BaseHeader):
             
         self.cols = [Column(name=name, index=i) 
                      for i, name in enumerate(self.names) if name in names]
-        for col, rdb_type in zip(self.cols, rdb_types):
-            col.rdb_type = rdb_type
+        for col, raw_type in zip(self.cols, raw_types):
+            col.raw_type = raw_type
+            col.type = self.get_col_type(col)
 
     def write(self, lines, table):
         lines.append(self.splitter.join([x.name for x in table.cols]))
