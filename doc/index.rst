@@ -361,14 +361,19 @@ Without NumPy
 The default set of converters
 for the :class:`~asciitable.BaseOutputter` class is defined as such::
 
-  default_converter = [asciitable.convert_list(int),
-                       asciitable.convert_list(float),
-                       asciitable.convert_list(str)]
+  default_converters = [asciitable.convert_list(int),
+                        asciitable.convert_list(float),
+                        asciitable.convert_list(str)]
 
 These take advantage of the :func:`~asciitable.convert_list` function which
-itself returns a function that will convert a list of values to the desired
-type.  The conversion code steps through each converter function and tries to
-call the function with a column of string values.  If it succeeds without
+returns a 2-element tuple.  The first element is function that will convert 
+a list of values to the desired type.  The second element is an :mod:`asciitable` 
+class that specifies the type of data produced.  This element should be one of 
+:class:`~asciitable.StrType`, :class:`~asciitable.IntType`, or
+:class:`~asciitable.FloatType`.  
+
+The conversion code steps through each applicable converter function and tries
+to call the function with a column of string values.  If it succeeds without
 throwing an exception it will then break out, but otherwise move on to the next
 conversion function.
 
@@ -378,9 +383,9 @@ column names.  Each dictionary value is a list similar to the
 ``default_converter``.  For example::
 
   # col1 is int, col2 is float, col3 is string
-  converters = {'col1': asciitable.convert_list(int),
-                'col2': asciitable.convert_list(float),
-                'col3': asciitable.convert_list(str)}
+  converters = {'col1': [asciitable.convert_list(int)],
+                'col2': [asciitable.convert_list(float)],
+                'col3': [asciitable.convert_list(str)]}
   read('file.dat', converters=converters)
 
 Note that it is also possible to specify a list of converter functions that
@@ -397,22 +402,22 @@ If the ``numpy`` module is available then the
 :class:`~asciitable.NumpyOutputter` is selected by default.  In this case  the
 default converters are::
 
-    default_converter = [asciitable.convert_numpy(numpy.int),
-                         asciitable.convert_numpy(numpy.float),
-                         asciitable.convert_numpy(numpy.str)]
+    default_converters = [asciitable.convert_numpy(numpy.int),
+                          asciitable.convert_numpy(numpy.float),
+                          asciitable.convert_numpy(numpy.str)]
 
 These take advantage of the :func:`~asciitable.convert_numpy` function which
-returns a function that converts a list to a numpy array of the specified type.
-The type must be a valid `numpy type
-<http://docs.scipy.org/doc/numpy/user/basics.types.html>`_, for example
-``numpy.int``, ``numpy.uint``, ``numpy.int8``, ``numpy.int64``,
+returns a 2-element tuple ``(converter_func, converter_type)`` as described in
+the previous section.  The type provided to ``convert_numpy()`` must be a valid
+`numpy type <http://docs.scipy.org/doc/numpy/user/basics.types.html>`_, for
+example ``numpy.int``, ``numpy.uint``, ``numpy.int8``, ``numpy.int64``,
 ``numpy.float``, ``numpy.float64``, ``numpy.str``.
 
 The converters for each column can be specified with the ``converters``
 keyword::
 
-  converters = {'col1': asciitable.convert_numpy(numpy.uint),
-                'col2': asciitable.convert_numpy(numpy.float32)}
+  converters = {'col1': [asciitable.convert_numpy(numpy.uint)],
+                'col2': [asciitable.convert_numpy(numpy.float32)]}
   read('file.dat', converters=converters)
 
 Advanced table reading

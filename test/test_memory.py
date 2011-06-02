@@ -41,7 +41,7 @@ def test_memory_from_LOL(numpy):
         assert(mem_data[0][1] == 2)
         assert(mem_data[0][2] == '3')
         assert((mem_data['col2'] == np.array([2, 5.2, 9])).all())
-        assert((mem_data['col3'] == np.array(['3', '6.1', 'hello'])).all())
+        assert((mem_data['col3'] == np.array([3, 6.1, 'hello'])).all())
     else:
         assert(mem_data[0] == [1, 2, 3])
         assert(mem_data['col2'] == [2, 5.2, 9])
@@ -59,7 +59,7 @@ def test_memory_from_LOL2(numpy):
         assert(mem_data[0][1] == 2)
         assert(mem_data[0][2] == '3')
         assert((mem_data['c2'] == np.array([2, 5.2, 9])).all())
-        assert((mem_data['c3'] == np.array(['3', '6.1', 'hello'])).all())
+        assert((mem_data['c3'] == np.array([3, 6.1, 'hello'])).all())
     else:
         assert(mem_data[0] == [1, 2, 3])
         assert(mem_data['c2'] == [2, 5.2, 9])
@@ -75,12 +75,14 @@ def test_memory_from_DOL(numpy):
     mem_data = mem_table.read(data)
     assert(mem_data.dtype.names == ('c1', 'c2', 'c3'))
     if numpy:
+        print mem_data
         assert(mem_data[0][0] == 1)
         assert(mem_data[0][1] == 4)
-        assert(mem_data[0][2] == '8')
+        assert(mem_data[0][2] == 8)
         assert((mem_data['c2'] == np.array([4, 5.2, 6.1])).all())
-        assert((mem_data['c3'] == np.array(['8', '9', 'hello'])).all())
+        assert((mem_data['c3'] == np.array([8, 9, 'hello'])).all())
     else:
+        print mem_data
         assert(mem_data[0] == [1, 4, 8])
         assert(mem_data['c2'] == [4, 5.2, 6.1])
         assert(mem_data['c3'] == [8, 9, 'hello'])

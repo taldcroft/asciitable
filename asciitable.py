@@ -84,6 +84,24 @@ class Keyword(object):
         self.comment = comment
         self.format = format
 
+class NoType(object):
+    pass
+
+class StrType(NoType):
+    pass
+
+class NumType(NoType):
+    pass
+
+class FloatType(NumType):
+    pass
+
+class IntType(NumType):
+    pass
+
+class AllType(StrType, FloatType, IntType):
+    pass
+
 class Column(object):
     """Table column.
 
@@ -98,7 +116,7 @@ class Column(object):
     def __init__(self, name, index):
         self.name = name
         self.index = index
-        self.type = 'any'       # can be float, int or string
+        self.type = NoType
         self.str_vals = []
         self.fill_values = {}
 
@@ -591,9 +609,14 @@ def convert_list(python_type):
     argument and returns a single value of the desired type.  In general
     this will be one of ``int``, ``float`` or ``str``.
     """
+    type_map = {int: IntType,
+                float: FloatType,
+                str: StrType}
+    converter_type = type_map.get(python_type, AllType)
+
     def converter(vals):
         return [python_type(x) for x in vals]
-    return converter
+    return converter, converter_type
 
 def convert_numpy(numpy_type):
     """Return a function that converts a list into a numpy array of the given
@@ -601,21 +624,30 @@ def convert_numpy(numpy_type):
     <http://docs.scipy.org/doc/numpy/user/basics.types.html>`_, e.g.  numpy.int,
     numpy.uint, numpy.int8, numpy.int64, numpy.float, numpy.float64, numpy.str.
     """
+
+    # Infer converter type from an instance of numpy_type. 
+    type_name = numpy.array([], dtype=numpy_type).dtype.name
+    if 'int' in type_name:
+        converter_type = IntType
+    elif 'float' in type_name:
+        converter_type = FloatType
+    elif 'string' in type_name:
+        converter_type = StrType
+    else:
+        converter_type = AllType
+    
     def converter(vals):
         return numpy.array(vals, numpy_type)
-    return converter
+    return converter, converter_type
 
 class BaseOutputter(object):
     """Output table as a dict of column objects keyed on column name.  The
     table data are stored as plain python lists within the column objects.
     """
     converters = {}
-    default_converter = {'any': [convert_list(x) for x in (int, float, str)],
-                         'num': [convert_list(x) for x in (int, float)],
-                         'int': [convert_list(int)],
-                         'float': [convert_list(float)],
-                         'str': [convert_list(str)]
-                         }
+    default_converters = [convert_list(int),
+                          convert_list(float),
+                          convert_list(str)]
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -623,19 +655,38 @@ class BaseOutputter(object):
         table.dtype.names = tuple(x.name for x in cols)
         return table
 
+    @staticmethod
+    def _validate_and_copy(col, converters):
+        """Validate the format for the type converters and then copy those
+        which are valid converters for this column (i.e. converter type is
+        a subclass of col.type)"""
+        converters_out = []
+        try:
+            for converter in converters:
+                converter_func, converter_type = converter
+                if not issubclass(converter_type, NoType):
+                    raise ValueError()
+                if issubclass(converter_type, col.type):
+                    converters_out.append((converter_func, converter_type))
+                    
+        except ValueError, TypeError:
+            raise ValueError('Error: invalid format for converters, see documentation\n%s' %
+                             converters)
+        return converters_out
+
     def _convert_vals(self, cols):
         for col in cols:
             converters = self.converters.get(col.name,
-                                             self.default_converter[col.type])
-            # Make a copy of converters and make sure converters is a list
-            try:
-                col.converters = converters[:]
-            except TypeError:
-                col.converters = [converters]
+                                             self.default_converters)
+            col.converters = self._validate_and_copy(col, converters)
 
             while not hasattr(col, 'data'):
                 try:
-                    col.data = col.converters[0](col.str_vals)
+                    converter_func, converter_type = col.converters[0]
+                    if not issubclass(converter_type, col.type):
+                        raise TypeError()
+                    col.data = converter_func(col.str_vals)
+                    col.type = converter_type
                 except (TypeError, ValueError):
                     col.converters.pop(0)
                 except IndexError:
@@ -674,12 +725,9 @@ class NumpyOutputter(BaseOutputter):
     default_masked_array = False
 
     if has_numpy:
-        default_converter = {'any': [convert_numpy(x) for x in (int, float, str)],
-                             'num': [convert_numpy(x) for x in (int, float)],
-                             'int': [convert_numpy(int)],
-                             'float': [convert_numpy(float)],
-                             'str': [convert_numpy(str)]
-                             }
+        default_converters = [convert_numpy(numpy.int),
+                              convert_numpy(numpy.float),
+                              convert_numpy(numpy.str)]
 
     def __call__(self, cols):
         self._convert_vals(cols)
@@ -1370,10 +1418,10 @@ class FixedWidthSplitter(BaseSplitter):
 
 
 class CdsHeader(BaseHeader):
-    col_type_map = {'e': 'float',
-                    'f': 'float',
-                    'i': 'int',
-                    'a': 'str'}
+    col_type_map = {'e': FloatType,
+                    'f': FloatType,
+                    'i': IntType,
+                    'a': StrType}
 
     def get_type_map_key(self, col):
         match = re.match(r'\d*(\S)', col.raw_type.lower())
@@ -1396,7 +1444,6 @@ class CdsHeader(BaseHeader):
         """
         BaseHeader.__init__(self)
         self.readme = readme
-        
 
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines`` for a CDS
@@ -1470,7 +1517,7 @@ class CdsHeader(BaseHeader):
 
                 match = re.match(r'\? (?P<equal> =)? (?P<nullval> \S*)', col.descr, re.VERBOSE)
                 if match:
-                    if col.type == 'float':
+                    if issubclass(col.type, FloatType):
                         fillval = 'nan'
                     else:
                         fillval = '-999'
@@ -1641,19 +1688,19 @@ class IpacHeader(BaseHeader):
     """IPAC table header"""
     comment = r'\\'
     splitter_class = BaseSplitter
-    col_type_map = {'int': 'int',
-                    'long': 'int',
-                    'double': 'float',
-                    'float': 'float',
-                    'real': 'float',
-                    'char': 'str',
-                    'date': 'str',
-                    'i': 'int',
-                    'l': 'int',
-                    'd': 'float',
-                    'f': 'float',
-                    'r': 'real',
-                    'c': 'str'}
+    col_type_map = {'int': IntType,
+                    'long': IntType,
+                    'double': FloatType,
+                    'float': FloatType,
+                    'real': FloatType,
+                    'char': StrType,
+                    'date': StrType,
+                    'i': IntType,
+                    'l': IntType,
+                    'd': FloatType,
+                    'f': FloatType,
+                    'r': FloatType,
+                    'c': StrType}
     
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
@@ -1703,7 +1750,7 @@ class IpacHeader(BaseHeader):
                 null = header_vals[3][i].strip()
                 if null.lower() != 'null':
                     col.null = null  # Can't strip dashes here
-                    if col.type == 'float':
+                    if issubclass(col.type, FloatType):
                         fillval = 'nan'
                     else:
                         fillval = '-999'
@@ -1798,7 +1845,7 @@ class Memory(BaseReader):
         if hasattr(table, 'keywords'):
             self.keywords = table.keywords
 
-        self.outputter.default_converter = {'any': lambda vals: vals}
+        self.outputter.default_converters = [((lambda vals: vals), AllType)]
         self.table = self.outputter(cols)
         self.cols = self.header.cols
 
@@ -1835,20 +1882,31 @@ class MemoryInputter(BaseInputter):
             if isinstance(table, BaseReader):
                 lines = table.table
             else:
+                # None of the possible choices so raise exception
                 raise TypeError('Input table must be iterable or else be a Reader object')
         else:
             # table is iterable, now see if it is dict-like or list-like
             try:
+                # If first_row_or_key is a row (in the case that table is
+                # list-like) then this will raise exception
                 table[first_row_or_key]
             except (TypeError, IndexError):
+                # Table is list-like (python list-of-lists or numpy recarray)
+                #if has_numpy and isinstance(table, numpy.ndarray):
                 lines = table
             else:
+                # Table is dict-like.  Turn this into a DictLikeNumpy that has
+                # an API similar to a numpy recarray.
                 lines = DictLikeNumpy(table)
                 if names is None:
                     lines.dtype.names = sorted(lines.keys())
                 else:
                     lines.dtype.names = names
 
+        # ``lines`` could now be one of the following iterable objects:
+        # - NumPy recarray
+        # - DictLikeNumpy object
+        # - Python list of lists
         return lines
 
 class MemoryHeader(BaseHeader):
@@ -1889,6 +1947,28 @@ class MemoryHeader(BaseHeader):
             
         self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
 
+        # ``lines`` could be one of: NumPy recarray, DictLikeNumpy obj, Python
+        # list of lists. If NumPy recarray then set col.type accordingly.  In
+        # the other two cases convert the data values to strings so the usual
+        # data converter processing will get the correct type.
+        if has_numpy and isinstance(lines, numpy.ndarray):
+            for col in self.cols:
+                type_name = lines[col.name].dtype.name
+                if 'int' in type_name:
+                    col.type = IntType
+                elif 'float' in type_name:
+                    col.type = FloatType
+                elif 'string' in type_name:
+                    col.type = StrType
+        else:
+            basic_reader = get_reader(names=[col.name for col in self.cols], quotechar="'")
+            data_in = tuple(' '.join(repr(vals[col.index]) for col in self.cols)
+                            for vals in lines)
+            data_out = basic_reader.read(data_in)
+            for col, data_col in zip(self.cols, basic_reader.cols):
+                col.type = data_col.type
+
+
 class MemorySplitter(BaseSplitter):
     """Splitter for data already in memory.  It is assumed that ``lines`` are
     iterable and that each line (aka row) is also an iterable object that
@@ -1907,8 +1987,8 @@ class MemoryData(BaseData):
         return lines
 
 class RdbHeader(BaseHeader):
-    col_type_map = {'n': 'num',
-                    's': 'str'}
+    col_type_map = {'n': NumType,
+                    's': StrType}
 
     def get_type_map_key(self, col):
         return col.raw_type[-1]
@@ -1950,7 +2030,13 @@ class RdbHeader(BaseHeader):
 
     def write(self, lines, table):
         lines.append(self.splitter.join([x.name for x in table.cols]))
-        lines.append(self.splitter.join([getattr(x, 'rdb_type', 'S') for x in table.cols]))
+        rdb_types = []
+        for col in table.cols:
+            if issubclass(col.type, NumType):
+                rdb_types.append('N')
+            else:
+                rdb_types.append('S')
+        lines.append(self.splitter.join(rdb_types))
 
 class WhitespaceSplitter(DefaultSplitter):
     def process_line(self, line):
