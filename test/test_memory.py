@@ -77,7 +77,7 @@ def test_memory_from_DOL(numpy):
     if numpy:
         assert(mem_data[0][0] == 1)
         assert(mem_data[0][1] == 4)
-        assert(mem_data[0][2] == 8)
+        assert(mem_data[0][2] == '8')
         assert((mem_data['c2'] == np.array([4, 5.2, 6.1])).all())
         assert((mem_data['c3'] == np.array([8, 9, 'hello'])).all())
     else:

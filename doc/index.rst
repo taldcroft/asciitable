@@ -345,7 +345,7 @@ Guessing can be disabled in two ways::
   import asciitable
   data = asciitable.read(table)               # guessing enabled by default
   data = asciitable.read(table, guess=False)  # disable for this call
-  asciitable.GUESS = False                    # set default to False globally
+  asciitable.set_guess(False)                 # set default to False globally
   data = asciitable.read(table)               # guessing disabled
   
 Converters
@@ -694,6 +694,8 @@ Functions
 .. autofunction:: convert_list
 
 .. autofunction:: convert_numpy
+
+.. autofunction:: set_guess
 
 Core Classes
 --------------
