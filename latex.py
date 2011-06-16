@@ -76,7 +76,7 @@ class LatexSplitter(BaseSplitter):
         return delimiter.join(str(x) for x in vals) + r' \\'
 
 
-class LaTeX(BaseReader):
+class Latex(BaseReader):
     
     # some latex commands should be treated as comments (i.e. ignored)
     # when reading a table 
