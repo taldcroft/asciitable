@@ -429,7 +429,7 @@ class BaseData(object):
         end_line = _get_line_index(self.end_line, data_lines)
 
         if start_line is not None or end_line is not None:
-            self.data_lines = data_lines[slice(start_line, self.end_line)]
+            self.data_lines = data_lines[slice(start_line, end_line)]
         else:  # Don't copy entire data lines unless necessary
             self.data_lines = data_lines
 
