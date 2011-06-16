@@ -692,6 +692,11 @@ class BaseReader(object):
         self.outputter = BaseOutputter()
         self.meta = {}                  # Placeholder for storing table metadata 
         self.keywords = []              # Placeholder for storing table Keywords
+        # Data and Header instances benefit from a little cross-coupling.  Header may need to
+        # know about number of data columns for auto-column name generation and Data may
+        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
+        self.data.header = self.header
+        self.header.data = self.data
 
     def read(self, table):
         """Read the ``table`` and return the results in a format determined by
@@ -718,11 +723,6 @@ class BaseReader(object):
             # Not a string.
             pass
             
-        # Data and Header instances benefit from a little cross-coupling.  Header may need to
-        # know about number of data columns for auto-column name generation and Data may
-        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
-        self.data.header = self.header
-        self.header.data = self.data
 
         self.lines = self.inputter.get_lines(table)
         self.data.get_data_lines(self.lines)
