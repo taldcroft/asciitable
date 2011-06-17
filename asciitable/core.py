@@ -352,7 +352,7 @@ class BaseHeader(object):
         :returns: None
         """
 
-        start_line = _get_line_index(self.start_line, lines)
+        start_line = _get_line_index(self.start_line, self.process_lines(lines))
         if start_line is None:
             # No header line so auto-generate names from n_data_cols
             if self.names is None:
@@ -458,7 +458,7 @@ class BaseData(object):
         end_line = _get_line_index(self.end_line, data_lines)
 
         if start_line is not None or end_line is not None:
-            self.data_lines = data_lines[slice(start_line, self.end_line)]
+            self.data_lines = data_lines[slice(start_line, end_line)]
         else:  # Don't copy entire data lines unless necessary
             self.data_lines = data_lines
 
@@ -761,6 +761,11 @@ class BaseReader(object):
         self.outputter = BaseOutputter()
         self.meta = {}                  # Placeholder for storing table metadata 
         self.keywords = []              # Placeholder for storing table Keywords
+        # Data and Header instances benefit from a little cross-coupling.  Header may need to
+        # know about number of data columns for auto-column name generation and Data may
+        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
+        self.data.header = self.header
+        self.header.data = self.data
 
     def read(self, table):
         """Read the ``table`` and return the results in a format determined by
@@ -787,9 +792,7 @@ class BaseReader(object):
             # Not a string.
             pass
             
-        # Data and Header instances benefit from a little cross-coupling.  Header may need to
-        # know about number of data columns for auto-column name generation and Data may
-        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
+        # Same from __init__.  ??? Do these need to be here?
         self.data.header = self.header
         self.header.data = self.data
 
@@ -978,5 +981,36 @@ def _get_reader(Reader, Inputter=None, Outputter=None, numpy=True, **kwargs):
         reader.data.fill_exclude_names = kwargs['fill_exclude_names']
 
     return reader
+
+extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
+                     'names', 'include_names', 'exclude_names')
+
+def _get_writer(Writer, **kwargs):
+    """Initialize a table writer allowing for common customizations. This
+    routine is for internal (package) use only and is useful because it depends
+    only on the "core" module. """
+
+    writer_kwargs = dict([k, v] for k, v in kwargs.items() if k not in extra_writer_pars)
+    writer = Writer(**writer_kwargs)
+
+    if 'delimiter' in kwargs:
+        writer.header.splitter.delimiter = kwargs['delimiter']
+        writer.data.splitter.delimiter = kwargs['delimiter']
+    if 'write_comment' in kwargs:
+        writer.header.write_comment = kwargs['write_comment']
+        writer.data.write_comment = kwargs['write_comment']
+    if 'quotechar' in kwargs:
+        writer.header.splitter.quotechar = kwargs['quotechar']
+        writer.data.splitter.quotechar = kwargs['quotechar']
+    if 'formats' in kwargs:
+        writer.data.formats = kwargs['formats']
+    if 'names' in kwargs:
+        writer.header.names = kwargs['names']
+    if 'include_names' in kwargs:
+        writer.header.include_names = kwargs['include_names']
+    if 'exclude_names' in kwargs:
+        writer.header.exclude_names = kwargs['exclude_names']
+
+    return writer
 
     

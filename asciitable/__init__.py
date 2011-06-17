@@ -44,6 +44,7 @@ from asciitable.basic import (Basic, BasicReader,
                               NoHeader, NoHeaderReader,
                               CommentedHeader, CommentedHeaderReader)
 from asciitable.cds import Cds, CdsReader
+from asciitable.latex import Latex, LatexReader
 from asciitable.ipac import Ipac, IpacReader
 from asciitable.daophot import Daophot, DaophotReader
 from asciitable.memory import Memory, MemoryReader

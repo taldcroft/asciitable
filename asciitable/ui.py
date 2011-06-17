@@ -52,13 +52,6 @@ def set_guess(guess):
     global _GUESS
     _GUESS = guess
 
-extra_reader_pars = ('Reader', 'Inputter', 'Outputter', 
-                     'delimiter', 'comment', 'quotechar', 'header_start',
-                     'data_start', 'data_end', 'converters',
-                     'data_Splitter', 'header_Splitter',
-                     'names', 'include_names', 'exclude_names',
-                     'fill_values', 'fill_include_names', 'fill_exclude_names')
-
 def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs):
     """Initialize a table reader allowing for common customizations.  Most of the
     default behavior for various parameters is determined by the Reader class.
@@ -87,8 +80,8 @@ def get_reader(Reader=None, Inputter=None, Outputter=None, numpy=True, **kwargs)
     # with a default Reader.
     if Reader is None:
         Reader = basic.BasicReader
-
-    return core._get_reader(Reader, Inputter=Inputter, Outputter=Outputter, numpy=numpy, **kwargs)
+    reader = core._get_reader(Reader, Inputter=Inputter, Outputter=Outputter, numpy=numpy, **kwargs)
+    return reader
 
 def read(table, numpy=True, guess=None, **kwargs):
     """Read the input ``table``.  If ``numpy`` is True (default) return the
@@ -217,30 +210,7 @@ def get_writer(Writer=None, **kwargs):
     """
     if Writer is None:
         Writer = basic.Basic
-    writer = Writer()
-
-    bad_args = [x for x in kwargs if x not in extra_writer_pars]
-    if bad_args:
-        raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
-
-    if 'delimiter' in kwargs:
-        writer.header.splitter.delimiter = kwargs['delimiter']
-        writer.data.splitter.delimiter = kwargs['delimiter']
-    if 'write_comment' in kwargs:
-        writer.header.write_comment = kwargs['write_comment']
-        writer.data.write_comment = kwargs['write_comment']
-    if 'quotechar' in kwargs:
-        writer.header.splitter.quotechar = kwargs['quotechar']
-        writer.data.splitter.quotechar = kwargs['quotechar']
-    if 'formats' in kwargs:
-        writer.data.formats = kwargs['formats']
-    if 'names' in kwargs:
-        writer.header.names = kwargs['names']
-    if 'include_names' in kwargs:
-        writer.header.include_names = kwargs['include_names']
-    if 'exclude_names' in kwargs:
-        writer.header.exclude_names = kwargs['exclude_names']
-
+    writer = core._get_writer(Writer, **kwargs)
     return writer
 
 def write(table, output,  Writer=None, **kwargs):
@@ -258,10 +228,6 @@ def write(table, output,  Writer=None, **kwargs):
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
     """
-
-    bad_args = [x for x in kwargs if x not in extra_writer_pars]
-    if bad_args:
-        raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
 
     reader_kwargs = dict((key, val) for key, val in kwargs.items()
                          if key in ('names', 'include_names', 'exclude_names'))

@@ -451,6 +451,10 @@ def get_testfiles(name=None):
          'cols': ('quoted colname with tab\tinside', 'col2', 'col3'),
          'nrows': 2,
          'opts': {'delimiter': '\s'}},
+        {'cols': ('cola', 'colb', 'colc'),
+         'name': 't/latex1.tex',
+         'nrows': 2,
+         'opts': {'Reader': asciitable.Latex, 'guess': False}},
          ]
 
     if name is not None:
