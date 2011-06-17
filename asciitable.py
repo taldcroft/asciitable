@@ -1885,7 +1885,6 @@ class WhitespaceSplitter(DefaultSplitter):
         return ''.join(newline)
 
 class LatexHeader(BaseHeader):
-    
     header_begin = r'\begin{tabular}'
     caption = None
     col_align = None
@@ -1961,10 +1960,19 @@ class LatexSplitter(BaseSplitter):
 
 
 class Latex(BaseReader):
+    '''Writes (and reads) LaTeX tables
     
+    This class implents some LaTeX specific commands.
+    Its main purpose is to write out a table in a form that LaTeX
+    can compile. It is beyond the scope to implenent every possible 
+    LaTeX command, instead the focus is to generate a simple, yet 
+    syntactically valid LaTeX table.
+    This class can read LaTeX the tables it writes and others of similar format,
+    i.e. exactly one row of data per line, no multicolumns, no footnotes. 
+    '''
     # some latex commands should be treated as comments (i.e. ignored)
     # when reading a table 
-    ignore_latex_commands = ['hline', 'vspace']
+    ignore_latex_commands = ['hline', 'vspace', 'caption']
     
     def __init__(self):
         BaseReader.__init__(self)
