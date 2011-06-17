@@ -4,7 +4,6 @@ import math
 from nose.tools import *
 
 import asciitable
-import latex
 
 if asciitable.has_numpy:
     numpy_cases = (True, False)
@@ -455,7 +454,7 @@ def get_testfiles(name=None):
         {'cols': ('cola', 'colb', 'colc'),
          'name': 't/latex1.tex',
          'nrows': 2,
-         'opts': {'Reader': latex.Latex, 'guess': False}},
+         'opts': {'Reader': asciitable.Latex, 'guess': False}},
          ]
 
     if name is not None:

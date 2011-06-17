@@ -1,7 +1,6 @@
 import sys
 from nose.tools import *
 import asciitable
-import latex
 
 try:
     import StringIO as io
@@ -53,7 +52,7 @@ ID	XCENTER	YCENTER	MAG	MERR	MSKY	NITER	SHARPNESS	CHI	PIER	PERROR
 18 18.114 280.17 22.329 0.206 30.12784 4 -2.544 1.104 0 No_error
 """
          ),   
-    dict(kwargs=dict(Writer=latex.Latex),
+    dict(kwargs=dict(Writer=asciitable.Latex),
          out="""\
 \\begin{table}
 \\begin{tabular}{ccccccccccc}
