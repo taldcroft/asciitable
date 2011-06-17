@@ -996,14 +996,23 @@ def get_writer(Writer=None, **kwargs):
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
     """
-    if Writer is None:
-        Writer = Basic
-    writer = Writer()
-
-    bad_args = [x for x in kwargs if x not in extra_writer_pars]
+    try:
+        special_writer_pars = Writer.special_writer_pars
+    except AttributeError:
+        special_writer_pars = []
+        
+    bad_args = [x for x in kwargs if x not in extra_writer_pars + special_writer_pars]
     if bad_args:
         raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
-
+    
+    special_writer_pars = [x for x in kwargs if x in special_writer_pars]
+    special_writer_kwargs = {}
+    for arg in special_writer_pars:
+        special_writer_kwargs[arg] = kwargs[arg]
+    
+    if Writer is None:
+        Writer = Basic
+    writer = Writer(**special_writer_kwargs)
     if 'delimiter' in kwargs:
         writer.header.splitter.delimiter = kwargs['delimiter']
         writer.data.splitter.delimiter = kwargs['delimiter']
@@ -1039,8 +1048,13 @@ def write(table, output,  Writer=None, **kwargs):
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
     """
-
-    bad_args = [x for x in kwargs if x not in extra_writer_pars]
+    
+    try:
+        special_writer_pars = Writer.special_writer_pars
+    except AttributeError:
+        special_writer_pars = []
+    
+    bad_args = [x for x in kwargs if x not in extra_writer_pars + special_writer_pars]
     if bad_args:
         raise ValueError('Supplied arg(s) %s not allowed for get_writer()' % bad_args)
 
@@ -1894,7 +1908,7 @@ class LatexHeader(BaseHeader):
         for i, line in enumerate(lines):
             if re_string.match(line):
                 # This construct breaks at the \begin{tabular} line, i.e. we need to add 1 to i after the loop 
-                return i + 1
+                return i+1
         else:
             #No begin_table found, so let's try if we are reading the bare inner bit
             return None
@@ -1973,6 +1987,7 @@ class Latex(BaseReader):
     # some latex commands should be treated as comments (i.e. ignored)
     # when reading a table 
     ignore_latex_commands = ['hline', 'vspace', 'caption']
+    special_writer_pars = ['caption', 'tabletype']
     
     def __init__(self):
         BaseReader.__init__(self)
@@ -1985,7 +2000,6 @@ class Latex(BaseReader):
         self.data.comment = self.header.comment
         self.data.header = self.header
         self.header.data = self.data
-
     
     def write(self, table=None):
         self.header.start_line = None
