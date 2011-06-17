@@ -68,6 +68,24 @@ ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PE
 \\end{table}
 """
          ),
+    dict(kwargs=dict(Writer=asciitable.Latex, caption = r'\caption{DaoPhot results \label{tab1}}', col_align = 'rlcc|ccccccc'),
+         out="""\
+\\begin{table}
+\\caption{DaoPhot results \\label{tab1}}
+\\begin{tabular}{rlcc|ccccccc}
+\\hline
+\\hline
+ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
+\\hline
+\\hline
+14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
+18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
+\\hline
+\\end{tabular}
+\\end{table}
+"""
+         ),
+    
     ]
 
 def check_write_table(test_def, table):

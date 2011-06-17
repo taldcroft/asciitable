@@ -999,7 +999,7 @@ def get_writer(Writer=None, **kwargs):
     try:
         special_writer_pars = Writer.special_writer_pars
     except AttributeError:
-        special_writer_pars = []
+        special_writer_pars = ()
         
     bad_args = [x for x in kwargs if x not in extra_writer_pars + special_writer_pars]
     if bad_args:
@@ -1052,7 +1052,7 @@ def write(table, output,  Writer=None, **kwargs):
     try:
         special_writer_pars = Writer.special_writer_pars
     except AttributeError:
-        special_writer_pars = []
+        special_writer_pars = ()
     
     bad_args = [x for x in kwargs if x not in extra_writer_pars + special_writer_pars]
     if bad_args:
@@ -1918,8 +1918,8 @@ class LatexHeader(BaseHeader):
         if self.caption:
             lines.append(self.caption)
         if not self.col_align:
-            self.col_align = r'{' + len(table.cols) * 'c' + r'}'
-        lines.append(self.header_begin + self.col_align)
+            self.col_align = len(table.cols) * 'c'
+        lines.append(self.header_begin + r'{' + self.col_align + r'}')
         lines.append(r'\hline')
         lines.append(r'\hline')
         lines.append(self.splitter.join([x.name for x in table.cols]))
@@ -1987,21 +1987,29 @@ class Latex(BaseReader):
     # some latex commands should be treated as comments (i.e. ignored)
     # when reading a table 
     ignore_latex_commands = ['hline', 'vspace', 'caption']
-    special_writer_pars = ['caption', 'tabletype']
+    special_writer_pars = ('caption', 'tabletype', 'col_align')
     
-    def __init__(self):
+    def __init__(self, **kwargs):
         BaseReader.__init__(self)
         self.header = LatexHeader()
         self.data = LatexData()
         self.header.comment = '%|' + '|'.join([r'\\' + command for command in self.ignore_latex_commands])
-        self.header.splitter = LatexSplitter()
-        self.header.tabletype = 'table'
+        self.header.splitter = LatexSplitter()        
         self.data.splitter = LatexSplitter()
         self.data.comment = self.header.comment
         self.data.header = self.header
         self.header.data = self.data
-    
+        if 'tabletype' in kwargs:
+            self.header.tabletype = kwargs['delimiter']
+        else:
+            self.header.tabletype = 'table'
+        if 'caption' in kwargs:
+            self.header.caption = kwargs['caption']
+        if 'col_align' in kwargs:
+            self.header.col_align = kwargs['col_align']
     def write(self, table=None):
         self.header.start_line = None
         self.data.start_line = None
+
+
         return BaseReader.write(self, table = table)
