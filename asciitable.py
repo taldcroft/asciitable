@@ -713,6 +713,11 @@ class BaseReader(object):
         :param table: table input
         :returns: output table
         """
+        # Data and Header instances benefit from a little cross-coupling.  Header may need to
+        # know about number of data columns for auto-column name generation and Data may
+        # need to know about header (e.g. for fixed-width tables where widths are spec'd in header.
+        self.data.header = self.header
+        self.header.data = self.data
         # If ``table`` is a file then store the name in the ``data``
         # attribute. The ``table`` is a "file" if it is a string
         # without the new line specific to the OS.
