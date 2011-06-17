@@ -1,5 +1,6 @@
 # run from main directory; not from test/
 import asciitable
+from nose.tools import *
 
 try:
     from math import isnan
@@ -9,10 +10,39 @@ except ImportError:
     except ImportError:
         print('Tests requiring isnan will fail')
     
-readme = "t/vizier/ReadMe"
+def read_table1(readme, data):
+    reader = asciitable.Cds(readme)
+    return reader.read(data)
+
+def read_table2(readme, data):
+    reader = asciitable.get_reader(Reader=asciitable.Cds, readme=readme)
+    if asciitable.has_numpy:
+        reader.outputter = asciitable.NumpyOutputter()
+    return reader.read(data)
+
+def read_table3(readme, data):
+    return asciitable.read(data, readme=readme)
+
+def test_multi_header():
+    readme = 't/cds/multi/ReadMe'
+    data = 't/cds/multi/lhs2065.dat'
+    for read_table in (read_table1, read_table2, read_table3):
+        table = read_table(readme, data)
+        assert_equal(len(table), 14390)
+        assert_almost_equal(table['Lambda'][-1], 9210.00)
+        assert_equal(table['Fnu'][-1], '14.2352')
+
+def test_glob_header():
+    readme = 't/cds/glob/ReadMe'
+    data = 't/cds/glob/lmxbrefs.dat'
+    for read_table in (read_table1, read_table2, read_table3):
+        table = read_table(readme, data)
+        assert_equal(len(table), 291)
+        assert_equal(table['Name'][-1], 'J1914+0953')
+        assert_equal(table['BibCode'][-2], '2005A&A...432..235R')
 
 def test_header_from_readme():
-    r = asciitable.Cds(readme)
+    r = asciitable.Cds("t/vizier/ReadMe")
     table = r.read("t/vizier/table1.dat")
     assert len(r.data.data_lines) == 15
     assert len(table) == 15
@@ -5312,3 +5342,5 @@ def test_header_from_readme():
 
 if __name__ == "__main__": # run from main directory; not from test/
     test_header_from_readme()
+    test_multi_header()
+    test_glob_header()

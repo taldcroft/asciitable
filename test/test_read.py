@@ -183,7 +183,7 @@ def test_start_end(numpy):
 def test_set_converters(numpy):
     converters = {'zabs1.nh': [asciitable.convert_numpy('int32'),
                                asciitable.convert_numpy('float32')],
-                  'p1.gamma': asciitable.convert_numpy('str')
+                  'p1.gamma': [asciitable.convert_numpy('str')]
                   }
     data = asciitable.read('t/test4.dat', converters=converters, numpy=numpy)
     assert_equal(str(data['zabs1.nh'].dtype), 'float32')

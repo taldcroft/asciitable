@@ -27,7 +27,7 @@ XCENTER YCENTER
     dict(kwargs=dict(Writer=asciitable.Rdb, exclude_names=['CHI']),
          out="""\
 ID	XCENTER	YCENTER	MAG	MERR	MSKY	NITER	SHARPNESS	PIER	PERROR
-S	S	S	S	S	S	S	S	S	S
+N	N	N	N	N	N	N	N	N	N
 14	138.538	256.405	15.461	0.003	34.85955	4	-0.032	0	No_error
 18	18.114	280.17	22.329	0.206	30.12784	4	-2.544	0	No_error
 """
@@ -85,8 +85,7 @@ ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PE
 \\end{table}
 """
          ),
-    
-    ]
+]
 
 def check_write_table(test_def, table):
     out = io.StringIO()
