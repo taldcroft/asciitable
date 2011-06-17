@@ -455,7 +455,7 @@ def get_testfiles(name=None):
         {'cols': ('cola', 'colb', 'colc'),
          'name': 't/latex1.tex',
          'nrows': 2,
-         'opts': {'Reader': latex.Latex}},
+         'opts': {'Reader': latex.Latex, 'guess': False}},
          ]
 
     if name is not None:
