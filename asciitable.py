@@ -334,7 +334,7 @@ class BaseHeader(object):
         :returns: None
         """
 
-        start_line = _get_line_index(self.start_line, lines)
+        start_line = _get_line_index(self.start_line, self.process_lines(lines))
         if start_line is None:
             # No header line so auto-generate names from n_data_cols
             if self.names is None:
