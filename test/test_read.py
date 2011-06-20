@@ -455,6 +455,10 @@ def get_testfiles(name=None):
          'name': 't/latex1.tex',
          'nrows': 2,
          'opts': {'Reader': asciitable.Latex, 'guess': False}},
+        {'cols': ('Facility', 'Id', 'exposure', 'date'),
+         'name': 't/latex2.tex',
+         'nrows': 3,
+         'opts': {'Reader': asciitable.Latex, 'guess': False, 'tabletype': 'deluxetable'}},         
          ]
 
     if name is not None:

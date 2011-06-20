@@ -56,32 +56,28 @@ ID	XCENTER	YCENTER	MAG	MERR	MSKY	NITER	SHARPNESS	CHI	PIER	PERROR
          out="""\
 \\begin{table}
 \\begin{tabular}{ccccccccccc}
-\\hline
-\\hline
 ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
-\\hline
-\\hline
 14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
 18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
-\\hline
 \\end{tabular}
 \\end{table}
 """
          ),
-    dict(kwargs=dict(Writer=asciitable.Latex, caption = r'\caption{DaoPhot results \label{tab1}}', col_align = 'rlcc|ccccccc'),
+    dict(kwargs=dict(Writer=asciitable.Latex, tabletype = 'AA', caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|lcccccccccc|'),
          out="""\
 \\begin{table}
-\\caption{DaoPhot results \\label{tab1}}
-\\begin{tabular}{rlcc|ccccccc}
-\\hline
-\\hline
+\\begin{center}
+\\caption{Mag values \\label{tab1}}
+\\begin{tabular}{|lcccccccccc|}
+\\hline \\hline
 ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
-\\hline
 \\hline
 14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
 18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
 \\hline
+\\hline
 \\end{tabular}
+\\end{center}
 \\end{table}
 """
          ),
