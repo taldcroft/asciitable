@@ -103,8 +103,8 @@ class CommentedHeaderHeader(core.BaseHeader):
             if match:
                 yield line[match.end():]
 
-    def write(self, lines, table):
-        lines.append(self.write_comment + self.splitter.join([x.name for x in table.cols]))
+    def write(self, lines):
+        lines.append(self.write_comment + self.splitter.join([x.name for x in self.cols]))
 
 class CommentedHeader(core.BaseReader):
     """Read a file where the column names are given in a line that begins with the
@@ -118,6 +118,8 @@ class CommentedHeader(core.BaseReader):
     def __init__(self):
         core.BaseReader.__init__(self)
         self.header = CommentedHeaderHeader()
+        self.header.data = self.data
+        self.data.header = self.header
         self.header.splitter.delimiter = ' '
         self.data.splitter.delimiter = ' '
         self.header.start_line = 0
@@ -170,7 +172,9 @@ class Rdb(TabReader):
         self.header.comment = r'\s*#'
         self.header.write_comment = '# '
         self.header.splitter.delimiter = '\t'
-        self.header.splitter.process_line = None  
+        self.header.splitter.process_line = None
+        self.header.data = self.data
+        self.data.header = self.header
         self.data.start_line = 2
 
 RdbReader = Rdb
@@ -217,10 +221,10 @@ class RdbHeader(core.BaseHeader):
             col.raw_type = raw_type
             col.type = self.get_col_type(col)
 
-    def write(self, lines, table):
-        lines.append(self.splitter.join([x.name for x in table.cols]))
+    def write(self, lines):
+        lines.append(self.splitter.join([x.name for x in self.cols]))
         rdb_types = []
-        for col in table.cols:
+        for col in self.cols:
             if issubclass(col.type, core.NumType):
                 rdb_types.append('N')
             else:

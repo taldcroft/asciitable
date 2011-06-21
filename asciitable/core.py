@@ -116,6 +116,11 @@ class Column(object):
         self.type = NoType
         self.str_vals = []
         self.fill_values = {}
+        self.formatter = None
+    
+    def __iter__(self):
+        for val in self.data:
+            yield self.fill_values.get(val, self.formatter(val))
 
 class BaseInputter(object):
     """Get the lines from the table input and return a list of lines.  The input table can be one of:
@@ -391,12 +396,12 @@ class BaseHeader(object):
             if line and (not self.comment or not re_comment.match(line)):
                 yield line
 
-    def write(self, lines, table):
+    def write(self, lines):
         if self.start_line is not None:
             for i, spacer_line in izip(range(self.start_line),
                                        itertools.cycle(self.write_spacer_lines)):
                 lines.append(spacer_line)
-            lines.append(self.splitter.join([x.name for x in table.cols]))
+            lines.append(self.splitter.join([x.name for x in self.cols]))
 
     @property
     def colnames(self):
@@ -506,10 +511,10 @@ class BaseData(object):
                 if len(replacement) < 2:
                     raise ValueError("Format of fill_values must be (<bad>, <fill>, <optional col1>, ...)")
                 elif len(replacement) == 2:
-                    affect_cols = colnames               
+                    affect_cols = colnames
                 else:
                     affect_cols = replacement[2:]
-            
+                
                 for i, key in ((i, x) for i, x in enumerate(self.header.colnames) if x in affect_cols):
                     cols[i].fill_values[replacement[0]] = str(replacement[1])
 
@@ -522,7 +527,7 @@ class BaseData(object):
                     col.str_vals[i] = col.fill_values[str_val]
                     col.mask[i] = True
 
-    def write(self, lines, table):
+    def write(self, lines):
         if hasattr(self.start_line, '__call__'):
             raise TypeError('Start_line attribute cannot be callable for write()')
         else:
@@ -532,15 +537,14 @@ class BaseData(object):
             lines.append(itertools.cycle(self.write_spacer_lines))
 
         formatters = []
-        for col in table.cols:
+        for col in self.cols:
             formatter = self.formats.get(col.name, self.default_formatter)
             if not hasattr(formatter, '__call__'):
                 formatter = _format_func(formatter)
-            formatters.append(formatter)
+            col.formatter = formatter
             
-        for vals in table.table:
-            lines.append(self.splitter.join([formatter(val) for formatter, val in
-                                             izip(formatters, vals)]))
+        for vals in itertools.izip(*self.cols):
+            lines.append(self.splitter.join(vals))
 
 def _format_func(format_str):
     def func(val):
@@ -842,10 +846,15 @@ class BaseReader(object):
         if table is None:
             table = self
 
+        # link information about the columns to the writer object (i.e. self)
+        self.header.cols = table.cols
+        self.data.cols = self.header.cols
+        self.data.masks(self.data.cols)
+
         # Write header and data to lines list 
         lines = []
-        self.header.write(lines, table)
-        self.data.write(lines, table)
+        self.header.write(lines)
+        self.data.write(lines)
 
         return lines
 
@@ -983,7 +992,9 @@ def _get_reader(Reader, Inputter=None, Outputter=None, numpy=True, **kwargs):
     return reader
 
 extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
-                     'names', 'include_names', 'exclude_names')
+                     'names', 'include_names', 'exclude_names', 
+                     'fill_values', 'fill_include_names',
+                     'fill_exclude_names')
 
 def _get_writer(Writer, **kwargs):
     """Initialize a table writer allowing for common customizations. This
@@ -1010,7 +1021,12 @@ def _get_writer(Writer, **kwargs):
         writer.header.include_names = kwargs['include_names']
     if 'exclude_names' in kwargs:
         writer.header.exclude_names = kwargs['exclude_names']
-
+    if 'fill_values' in kwargs:
+        writer.data.fill_values = kwargs['fill_values']
+    if 'fill_include_names' in kwargs:
+        writer.data.fill_include_names = kwargs['fill_include_names']
+    if 'fill_exclude_names' in kwargs:
+        writer.data.fill_exclude_names = kwargs['fill_exclude_names']
     return writer
 
     

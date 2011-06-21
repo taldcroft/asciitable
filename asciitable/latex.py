@@ -27,16 +27,16 @@ class LatexHeader(core.BaseHeader):
         else:
             return None
     
-    def write(self, lines, table):
+    def write(self, lines):
         if not 'col_align' in self.latex.keys():
-            self.latex['col_align'] = len(table.cols) * 'c'
+            self.latex['col_align'] = len(self.cols) * 'c'
 
         if self.latex['tabletype'] == 'deluxetable':
             lines.append(r'\begin{' + self.latex['tabletype'] + r'}{' + self.latex['col_align'] + r'}')
             add_dictval_to_list(self.latex, 'preamble', lines)
             if 'caption' in self.latex.keys():
                 lines.append(r'\tablecaption{' + self.latex['caption'] +'}')
-            tablehead = ' & '.join([r'\colhead{' + x.name + '}' for x in table.cols])
+            tablehead = ' & '.join([r'\colhead{' + x.name + '}' for x in self.cols])
             lines.append(r'\tablehead{' + tablehead + '}')
         else:
             lines.append(r'\begin{' + self.latex['tabletype'] + r'}')
@@ -45,7 +45,7 @@ class LatexHeader(core.BaseHeader):
                 lines.append(r'\caption{' + self.latex['caption'] +'}')
             lines.append(self.header_start + r'{' + self.latex['col_align'] + r'}')
             add_dictval_to_list(self.latex, 'header_start', lines)
-            lines.append(self.splitter.join([x.name for x in table.cols]))
+            lines.append(self.splitter.join([x.name for x in self.cols]))
             add_dictval_to_list(self.latex, 'header_end', lines)
                 
 
@@ -66,16 +66,16 @@ class LatexData(core.BaseData):
         else:
             return None
 
-    def write(self, lines, table):
+    def write(self, lines):
         if self.latex['tabletype'] == 'deluxetable':
             lines.append(self.data_start)
-            core.BaseData.write(self, lines, table)
+            core.BaseData.write(self, lines)
             lines.append(self.data_end)
             add_dictval_to_list(self.latex, 'tablefoot', lines)
             lines.append(r'\begin{' + self.latex['tabletype'] + r'}')
         else:
             add_dictval_to_list(self.latex, 'data_start', lines)
-            core.BaseData.write(self, lines, table)
+            core.BaseData.write(self, lines)
             add_dictval_to_list(self.latex, 'data_end', lines)
             lines.append(self.data_end)
             add_dictval_to_list(self.latex, 'tablefoot', lines)
