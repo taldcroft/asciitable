@@ -41,6 +41,7 @@ import asciitable.daophot as daophot
 import asciitable.ipac as ipac
 import asciitable.memory as memory
 from asciitable.core import next, izip, any
+import asciitable.latex as latex
 
 # Default setting for guess parameter in read()
 _GUESS = True
@@ -184,6 +185,8 @@ def _get_guess_kwargs_list():
                          dict(Reader=cds.Cds),
                          dict(Reader=daophot.Daophot),
                          dict(Reader=ipac.Ipac),
+                         dict(Reader=latex.Latex),
+                         dict(Reader=latex.AASTex)
                          ]
     for Reader in (basic.CommentedHeader, basic.BasicReader, basic.NoHeader):
         for delimiter in ("|", ",", " ", "\s"):
