@@ -63,15 +63,25 @@ ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PE
 \\end{table}
 """
          ),
-    dict(kwargs=dict(Writer=asciitable.Latex, tabletype = 'AA', caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|lcccccccccc|'),
+    dict(kwargs=dict(Writer=asciitable.AASTex),
+         out="""\
+\\begin{deluxetable}{ccccccccccc}
+\\tablehead{\\colhead{ID} & \\colhead{XCENTER} & \\colhead{YCENTER} & \\colhead{MAG} & \\colhead{MERR} & \\colhead{MSKY} & \\colhead{NITER} & \\colhead{SHARPNESS} & \\colhead{CHI} & \\colhead{PIER} & \\colhead{PERROR}}
+\\startdata
+14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
+18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
+\\enddata
+\\end{deluxetable}
+"""
+         ),
+
+    dict(kwargs=dict(Writer=asciitable.Latex, caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|lcccccccccc|'),
          out="""\
 \\begin{table}
 \\begin{center}
 \\caption{Mag values \\label{tab1}}
 \\begin{tabular}{|lcccccccccc|}
-\\hline \\hline
 ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
-\\hline
 14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
 18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
 \\hline
@@ -81,6 +91,25 @@ ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PE
 \\end{table}
 """
          ),
+    dict(kwargs=dict(Writer=asciitable.Latex, latexdict = asciitable.latexdicts['template']),
+         out="""\
+\\begin{tabletype}
+preamble
+\\caption{caption}
+\\begin{tabular}{col_align}
+header_start
+ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
+header_end
+data_start
+14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
+18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
+data_end
+\\end{tabular}
+tablefoot
+\\end{tabletype}
+"""
+         ),
+
 ]
 
 def check_write_table(test_def, table):

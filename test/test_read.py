@@ -454,11 +454,11 @@ def get_testfiles(name=None):
         {'cols': ('cola', 'colb', 'colc'),
          'name': 't/latex1.tex',
          'nrows': 2,
-         'opts': {'Reader': asciitable.Latex, 'guess': False}},
+         'opts': {'Reader': asciitable.Latex}},
         {'cols': ('Facility', 'Id', 'exposure', 'date'),
          'name': 't/latex2.tex',
          'nrows': 3,
-         'opts': {'Reader': asciitable.Latex, 'guess': False, 'tabletype': 'deluxetable'}},         
+         'opts': {'Reader': asciitable.AASTex}},
          ]
 
     if name is not None:
