@@ -601,6 +601,10 @@ output table format.  Different Reader classes can define different defaults, so
 descriptions below sometimes mention "typical" default values.  This refers to
 the :class:`~asciitable.Basic` reader and other similar Reader classes.
 
+Some Reader classes, e.g. :class:`~asciitable.Latex` or :class:`~asciitable.AASTex`
+accept aditional keywords, that can customize the output further. See the documentation
+of these classes for details.
+
 **output** : output specifier
   There are two ways to specify the output for the write operation:
 
@@ -656,6 +660,24 @@ the :class:`~asciitable.Basic` reader and other similar Reader classes.
 **exclude_names**: list of names to exlude from output
   Exclude these names from the list of output columns.  This is applied *after*
   the ``include_names`` filtering.  If not specified then no columns are excluded.
+
+**fill_values**: fill value specifier of lists
+  This can be used to fill missing values in the table or replace values with special meaning.
+  The syntax is the same as used on input.
+  See the `Replace bad or missing values`_ section for more information on the syntax.
+  When writing a table, all values are converted to strings, before any value is replaced. Thus,
+  you need to provide the string representation (stripped of whitespace) for each value.
+  Example::
+
+    asciitable.write(table, sys.stdout, fill_values = [('nan', 'no data'),
+                                                       ('-999.0', 'no data')])
+
+**fill_include_names**: list of column names, which are affected by ``fill_values``.
+  If not supplied, then ``fill_values`` can affect all columns.
+
+**fill_exclude_names**: list of column names, which are not affected by ``fill_values``.
+  If not supplied, then ``fill_values`` can affect all columns.
+
 
 
 Base class elements
@@ -779,6 +801,8 @@ but idiosyncratic formats.
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
 * :class:`~asciitable.Tab`: tab-separated values
+* :class:`~asciitable.Latex`: LaTeX table with datavalue in the `tabular` environment
+* :class:`~asciitable.AASTex`: AASTeX `deluxetable` used for AAS journals
 
 .. autoclass:: Basic
    :show-inheritance:
@@ -825,21 +849,31 @@ but idiosyncratic formats.
    :members:
    :undoc-members:
 
+.. autoclass:: Latex
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: AASTex
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
 Other extension classes
 -----------------------
 These classes provide support for extension readers.
 
-.. autoclass:: CdsData
+.. autoclass:: asciitable.cds.CdsData
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: CdsHeader
+.. autoclass:: asciitable.cds.CdsHeader
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: CommentedHeaderHeader
+.. autoclass:: asciitable.basic.CommentedHeaderHeader
    :show-inheritance:
    :members:
    :undoc-members:
@@ -849,7 +883,7 @@ These classes provide support for extension readers.
    :members:
    :undoc-members:
 
-.. autoclass:: DaophotHeader
+.. autoclass:: asciitable.daophot.DaophotHeader
    :show-inheritance:
    :members:
    :undoc-members:
@@ -859,15 +893,46 @@ These classes provide support for extension readers.
    :members:
    :undoc-members:
 
-.. autoclass:: IpacData
+.. autoclass:: asciitable.ipac.IpacData
    :show-inheritance:
    :members:
    :undoc-members:
 
-.. autoclass:: IpacHeader
+.. autoclass:: asciitable.ipac.IpacHeader
    :show-inheritance:
    :members:
    :undoc-members:
+
+.. autoclass:: asciitable.latex.LatexHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: asciitable.latex.LatexData
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: asciitable.latex.LatexSplitter
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: asciitable.latex.AASTexHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: asciitable.latex.AASTexData
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: asciitable.latex.AASTexHeaderSplitter
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
 
 .. toctree::
    :maxdepth: 1

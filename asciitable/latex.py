@@ -125,7 +125,8 @@ class LatexData(core.BaseData):
 
 
 class LatexSplitter(core.BaseSplitter):
-
+    '''Split LaTeX table date. Default delimiter is `&`.
+    '''
     delimiter = '&'
 
     def process_line(self, line):
@@ -151,55 +152,111 @@ class LatexSplitter(core.BaseSplitter):
         delimiter = ' ' + self.delimiter + ' '
         return delimiter.join(str(x) for x in vals) + r' \\'
 
-extra_latex_pars = ('latexdict', 'caption', 'col_align', 'ignore_latex_commands')
-
 class Latex(core.BaseReader):
     '''Writes (and reads) LaTeX tables
     
     This class implements some LaTeX specific commands.
     Its main purpose is to write out a table in a form that LaTeX
-    can compile. It is beyond the scope to implement every possible 
-    LaTeX command, instead the focus is to generate a simple, yet 
-    syntactically valid LaTeX tables.
+    can compile. It is beyond the scope of this class to implement every possible 
+    LaTeX command, instead the focus is to generate a syntactically valid LaTeX
+    tables.
     This class can also read simple LaTeX tables (one line per table row,
-    no \multicolumn or similar constructs), spcifically, it can read the 
-    tables it writes.
-    '''
-    # some latex commands should be treated as comments (i.e. ignored)
-    # when reading a table 
-    ignore_latex_commands = ['hline', 'vspace', 'tableline']
+    no ``\multicolumn`` or similar constructs), specifically, it can read the 
+    tables itself writes.
     
-    def __init__(self, **kwargs):
+    Reading a LaTeX table, the following keyword is accepted:
+    
+    **ignore_latex_commands** : 
+        Lines starting with these LaTeX commands will be treated as comments (i.e. ignored).
+            
+    When writing a LaTeX table, the some keywords can customize the format.
+    Care has to be taken here, because python interprets ``\\`` in a string as an escape character.
+    In order to pass this to the output either format your strings as raw strings with the ``r`` specifier
+    or use a double ``\\\\``.
+    Examples::
+    
+        caption = r'My table \label{mytable}'
+        caption = 'My table \\\\label{mytable}'
+    
+    **latexdict** : Dictionary of extra parameters for the LaTeX output
+        * tabletype : used for first and last line of table. 
+            The default is ``\\begin{table}``.
+            The following would generate a table, which spans the whole page in a two-column document::
+                
+                asciitable.write(data, sys.stdout, Writer = asciitable.Latex,
+                             latexdict = {'tabletype': 'table*'})
+    
+        * col_align : Alignment of columns
+            If not present all columns will be centered.
+        
+        * caption : Table caption (string or list of strings)
+            This will appear above the table as it is the standard in many scientific publications.
+            If you prefer a caption below the table, just write the full LaTeX command as
+            ``latexdict['tablefoot'] = r'\caption{My table}'``
+            
+        * preamble, header_start, header_end, data_start, data_end, tablefoot: Pure LaTeX
+            Each one can be a string or a list of strings. These strings will be inserted into the table
+            without any further processing. See the examples below.
+    
+        Run the following code to see where each element of the dictionary is inserted in the
+        LaTeX table::
+        
+            import asciitable
+            import asciitable.latex
+            import sys
+            data = {'cola': [1,2], 'colb': [3,4]}
+            asciitable.write(data, sys.stdout, Writer = asciitable.Latex,
+                             latexdict = asciitable.latex.latexdicts['template'])
+                             
+        Some table styles are predefined in the dictionary ``asciitable.latex.latexdicts``. The following generates
+        in table in style preferred by A&A and some other journals::
+        
+            asciitable.write(data, sys.stdout, Writer = asciitable.Latex,
+                             latexdict = asciitable.latex.latexdicts['AA'])
+                             
+        As an example, this generates a table, which spans all columns and is centered on the page::
+        
+            asciitable.write(data, sys.stdout, Writer = asciitable.Latex,
+                             col_align = '|lr|',
+                             latexdict = {'preamble': r'\begin{center}', 'tablefoot': r'\end{center}',
+                                          'tabletype': 'table*'})
+    
+    **caption** : Set table caption 
+        Shorthand for::
+    
+            latexdict['caption'] = caption
+    
+    **col_align** : Set the column alignment. 
+        If not present this will be auto-generated for centered columns. Shorthand for::
+        
+            latexdict['col_align'] = col_align
+    
+    '''
+    
+    def __init__(self, ignore_latex_commands = ['hline', 'vspace', 'tableline'], latexdict = {'tabletype': 'table'}, caption ='', col_align = None):
+
         core.BaseReader.__init__(self)
         self.header = LatexHeader()
         self.data = LatexData()
-        self.header.comment = '%|' + '|'.join([r'\\' + command for command in self.ignore_latex_commands])
+        
         self.header.splitter = LatexSplitter()
         self.data.splitter = LatexSplitter()
         self.data.header = self.header
         self.header.data = self.data
         self.latex = {}
-        self.latex['tabletype'] = 'table'
         # The latex dict drives the format of the table and needs to be shared
         # with data and header
         self.header.latex = self.latex
         self.data.latex = self.latex
 
-        if 'latexdict' in kwargs:
-            self.latex.update(kwargs['latexdict'])
-        if 'caption' in kwargs:
-            self.latex['caption'] = kwargs['caption']
-        if 'col_align' in kwargs:
-            self.latex['col_align'] = kwargs['col_align']
-        if 'ignore_latex_commands' in kwargs:
-            self.ignore_latex_commands = kwargs['ignore_latex_commands']
-
+        self.latex.update(latexdict)
+        if caption: self.latex['caption'] = caption
+        if col_align: self.latex['col_align'] = col_align
+        
+        self.ignore_latex_commands = ignore_latex_commands
         self.header.comment = '%|' + '|'.join([r'\\' + command for command in self.ignore_latex_commands])
         self.data.comment = self.header.comment
 
-        for arg in kwargs:
-            if arg not in extra_latex_pars:
-                raise ValueError(arg + ' is not a valid keyword for ' +  str(self.__class__))
 
     def write(self, table=None):
         self.header.start_line = None
@@ -211,7 +268,11 @@ LatexReader = Latex
 
 
 
-class AASTexHeader(core.BaseHeader):
+class AASTexHeader(LatexHeader):
+    '''In a `deluxetable` some header keywords differ from standard LaTeX.
+    
+    This header is modified to take that into account.
+    '''
     header_start = r'\tablehead'
 
     def start_line(self, lines):
@@ -230,6 +291,8 @@ class AASTexHeader(core.BaseHeader):
 
 
 class AASTexData(LatexData):
+    '''In a `deluxetable` the data is enclosed in `\startdata` and `\enddata`
+    '''
     data_start = r'\startdata'
     data_end = r'\enddata'
 
@@ -244,7 +307,12 @@ class AASTexData(LatexData):
         lines.append(r'\end{' + self.latex['tabletype'] + r'}')
 
 class AASTexHeaderSplitter(LatexSplitter):
-
+    '''extract column names from a `deluxetable`
+    
+    This splitter expects the following LaTeX code **in a single line**:
+    
+        \tablehead{\colhead{col1} & ... & \colhead{coln}}
+    '''
     def process_line(self, line):
         """extract column names from tablehead
         """
@@ -276,12 +344,13 @@ class AASTex(Latex):
     LaTeX command, instead the focus is to generate a simple, yet 
     syntactically valid LaTeX tables.
     This class can also read simple LaTeX tables (one line per table row,
-    no \multicolumn or similar constructs), spcifically, it can read the 
+    no ``\\multicolumn`` or similar constructs), spcifically, it can read the 
     tables it writes.
+    
+    It derives from :class:`~asciitable.Latex` and accepts the same keywords (See there for documentation).
+    However, the keywords ``header_start``, ``header_end``, ``data_start`` and ``data_end`` in 
+    ``latexdict`` have no effect.
     '''
-    # some latex commands should be treated as comments (i.e. ignored)
-    # when reading a table 
-    ignore_latex_commands = ['hline', 'vspace', 'tableline']
 
     def __init__(self, **kwargs):
         Latex.__init__(self, **kwargs)
