@@ -174,7 +174,7 @@ class Latex(core.BaseReader):
         self.header = LatexHeader()
         self.data = LatexData()
         self.header.comment = '%|' + '|'.join([r'\\' + command for command in self.ignore_latex_commands])
-        self.header.splitter = LatexSplitter()        
+        self.header.splitter = LatexSplitter()
         self.data.splitter = LatexSplitter()
         self.data.header = self.header
         self.header.data = self.data
@@ -199,7 +199,7 @@ class Latex(core.BaseReader):
 
         for arg in kwargs:
             if arg not in extra_latex_pars:
-                raise ValueError(arg + 'is not a keyword for asciitable.Latex')
+                raise ValueError(arg + ' is not a valid keyword for ' +  str(self.__class__))
 
     def write(self, table=None):
         self.header.start_line = None
@@ -284,7 +284,7 @@ class AASTex(Latex):
     ignore_latex_commands = ['hline', 'vspace', 'tableline']
 
     def __init__(self, **kwargs):
-        Latex.__init__(self)
+        Latex.__init__(self, **kwargs)
         self.header = AASTexHeader()
         self.data = AASTexData()
         self.header.comment = '%|' + '|'.join([r'\\' + command for command in self.ignore_latex_commands])
@@ -305,7 +305,7 @@ AASTexReader = AASTex
 # make these lines in test caes and in documentation
 
 #dat = {'cola':[1,2], 'colb':[3,4]}
-#asciitable.write(dat, sys.stdout, Writer = asciitable.Latex, tabletype = 'AA', caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|ll|')
+#asciitable.write(dat, sys.stdout, Writer = asciitable.Latex, caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|ll|')
 #\begin{table}
 #\begin{center}
 #\caption{Mag values \label{tab1}}

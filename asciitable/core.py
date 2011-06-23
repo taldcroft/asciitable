@@ -119,8 +119,14 @@ class Column(object):
         self.formatter = None
     
     def __iter__(self):
+        '''iterate over formated column values
+        
+        Each value is paased through self.formatter.
+        If str(self.formatter(value)) is found in the fill_values specification,
+        the corresponding fill_value is returned, otherwise the formated value.
+        '''
         for val in self.data:
-            yield self.fill_values.get(val, self.formatter(val))
+            yield self.fill_values.get(str(self.formatter(val)).strip(), self.formatter(val))
 
 class BaseInputter(object):
     """Get the lines from the table input and return a list of lines.  The input table can be one of:

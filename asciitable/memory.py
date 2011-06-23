@@ -52,6 +52,15 @@ class Memory(core.BaseReader):
       data = numpy.zeros((2,), dtype=[('col1','i4'), ('col2','f4'), ('col3', 'a10')])
       data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
       mem_data = asciitable.read(data, Reader=asciitable.Memory)
+      
+    **Numpy masked structured array**::
+
+      data = numpy.ma.zeros((2,), dtype=[('col1','i4'), ('col2','f4'), ('col3', 'a10')])
+      data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
+      data['col2'] = ma.masked
+      mem_data = asciitable.read(data, Reader=asciitable.Memory)
+      
+      In the current version all masked values will be converted to nan.
 
     **Sequence of sequences**::
     
@@ -88,7 +97,7 @@ class Memory(core.BaseReader):
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
-            if len(str_vals) != n_data_cols:
+            if len(list(str_vals)) != n_data_cols:
                 errmsg = ('Number of header columns (%d) inconsistent with '
                           'data columns (%d) at data line %d\n'
                           'Header values: %s\n'
