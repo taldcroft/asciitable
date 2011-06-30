@@ -143,7 +143,7 @@ class LatexSplitter(core.BaseSplitter):
     def process_val(self, val):
         """Remove whitespace and {} at the beginning or end of value."""
         val = val.strip()
-        if (val[0] == '{') and (val[-1] == '}'):
+        if val and (val[0] == '{') and (val[-1] == '}'):
             val = val[1:-1]
         return val
     
@@ -233,7 +233,7 @@ class Latex(core.BaseReader):
     
     '''
     
-    def __init__(self, ignore_latex_commands = ['hline', 'vspace', 'tableline'], latexdict = {'tabletype': 'table'}, caption ='', col_align = None):
+    def __init__(self, ignore_latex_commands = ['hline', 'vspace', 'tableline'], latexdict = {}, caption ='', col_align = None):
 
         core.BaseReader.__init__(self)
         self.header = LatexHeader()
@@ -248,7 +248,7 @@ class Latex(core.BaseReader):
         # with data and header
         self.header.latex = self.latex
         self.data.latex = self.latex
-
+        self.latex['tabletype'] = 'table'
         self.latex.update(latexdict)
         if caption: self.latex['caption'] = caption
         if col_align: self.latex['col_align'] = col_align
