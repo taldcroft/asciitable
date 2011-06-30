@@ -233,7 +233,7 @@ class Latex(core.BaseReader):
     
     '''
     
-    def __init__(self, ignore_latex_commands = ['hline', 'vspace', 'tableline'], latexdict = {'tabletype': 'table'}, caption ='', col_align = None):
+    def __init__(self, ignore_latex_commands = ['hline', 'vspace', 'tableline'], latexdict = {}, caption ='', col_align = None):
 
         core.BaseReader.__init__(self)
         self.header = LatexHeader()
@@ -244,6 +244,7 @@ class Latex(core.BaseReader):
         self.data.header = self.header
         self.header.data = self.data
         self.latex = {}
+        self.latex['tabletype'] = 'table'
         # The latex dict drives the format of the table and needs to be shared
         # with data and header
         self.header.latex = self.latex
