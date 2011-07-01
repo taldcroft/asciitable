@@ -85,6 +85,13 @@ make pypi
 
 - Download tarball and diff against the one in /pool14/aldcroft
 
+Test install on mac:
+
+pip install --upgrade asciitable
+ipython
+import asciitable
+asciitable?
+
 Astrolib SVN
 ------------
 (Note: svn => /usr/local/bin/svn doesn't have http or https support)
