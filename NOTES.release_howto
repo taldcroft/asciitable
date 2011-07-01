@@ -8,6 +8,10 @@ git push origin <newbranch>
 
 Test
 ------
+Coverage
+^^^^^^^^^
+(Using Python 2.7 on linux)
+nosetests --with-coverage --cover-package=asciitable --cover-erase --cover-html
 
 Linux
 ^^^^^^
@@ -15,6 +19,7 @@ Linux
 set pyroot=$HOME/soft/ActivePython
 $pyroot/2.6/bin/nosetests
 $pyroot/2.7/bin/nosetests
+$pyroot/2.7_bare/bin/nosetests
 $pyroot/3.2/bin/nosetests
 
 Mac / windows

@@ -549,7 +549,7 @@ class BaseData(object):
                 formatter = _format_func(formatter)
             col.formatter = formatter
             
-        for vals in itertools.izip(*self.cols):
+        for vals in izip(*self.cols):
             lines.append(self.splitter.join(vals))
 
 def _format_func(format_str):
