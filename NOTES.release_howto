@@ -75,6 +75,7 @@ git push [--dry-run] origin <newbranch>
 
 git checkout master
 git tag -a <VERSION>
+  Include CHANGES
 git merge <newbranch>
 git push [--dry-run] origin 
 
