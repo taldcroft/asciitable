@@ -47,5 +47,5 @@ setup(name='asciitable',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 3',
           ],
-      py_modules=['asciitable'],
+      packages=['asciitable'],
       )
