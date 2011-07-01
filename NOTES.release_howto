@@ -35,6 +35,9 @@ Prepare for release
 - Update __version__ in asciitable.py
 - Update VERSION
 - Update CHANGES
+- Update setup.py
+- Update README.rst
+- Update index.rst
 make doc
 
 Make the source distribution and confirm the correct files
@@ -51,7 +54,7 @@ cd asciitable-*
 
 /usr/bin/nosetests
 
-more asciitable.py   #confirm __version__ !!
+more asciitable/core.py   #confirm __version__ !!
 
 Install new source docs
 ---------------------------------------------

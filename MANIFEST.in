@@ -1,4 +1,6 @@
+include asciitable/*.py
 include t/*
+include t/cds/*/*
 include t/vizier/*
 include doc/*.rst
 include CHANGES

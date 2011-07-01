@@ -1,3 +1,40 @@
+0.7.0
+=====
+This is a significant release with the following key features:
+
+- Added support for reading and writing LaTeX tables
+  (contributed by Moritz Guenther).
+- Improved the CDS reader by better supporting multi-file
+  tables (contributed by Frederic Grollier).
+- Refactored the code into a package with functionally distinct modules.
+- Added "type" attribute in the Column class that provides the
+  type of a column as IntType, FloatType, or StrType.
+ 
+The new Latex and AASTex classes provide the ability to write
+publication quality LaTeX tables in both the standard and AAS
+"deluxetable" formats.  These classes provide hooks to inject
+additional LaTeX commands as needed for more complex tables.
+
+API changes:
+- Previously the read(), write(), get_reader() and get_writer()
+  raised an exception for unrecognized keyword arguments.  Now
+  those extra arguments are passed on to the Reader class
+  constructor.  From the user perspective this means you can call
+  read()/write() with class initialization arguments (see Cds and
+  Latex for examples). For developers it means more flexibility
+  in Reader classes.
+- One minor API change is not backward compatible.  When
+  specifying custom column converters (e.g. to force a column
+  that looks like integers to convert to floats) it was
+  previously possible to provide either a list of converters or a
+  single converter.  Now you must always provide a list of
+  converters even it is has only one element.  This was needed to
+  support consistent assigment of the Column.type attribute.
+
+Other minor fixes:
+- Fixed a bug when the "end_line" parameter is passed a function.
+- Fixed a bug where the RDB writer issued incorrect column types.
+
 0.6.0
 =====
 Add support and testing for MacOS and Windows.

@@ -153,7 +153,7 @@ class LatexSplitter(core.BaseSplitter):
         return delimiter.join(str(x) for x in vals) + r' \\'
 
 class Latex(core.BaseReader):
-    '''Writes (and reads) LaTeX tables
+    '''Write and read LaTeX tables.
     
     This class implements some LaTeX specific commands.
     Its main purpose is to write out a table in a form that LaTeX
@@ -162,9 +162,9 @@ class Latex(core.BaseReader):
     tables.
     This class can also read simple LaTeX tables (one line per table row,
     no ``\multicolumn`` or similar constructs), specifically, it can read the 
-    tables itself writes.
+    tables that it writes.
     
-    Reading a LaTeX table, the following keyword is accepted:
+    Reading a LaTeX table, the following keywords are accepted:
     
     **ignore_latex_commands** : 
         Lines starting with these LaTeX commands will be treated as comments (i.e. ignored).
@@ -332,23 +332,13 @@ class AASTexHeaderSplitter(LatexSplitter):
 
 
 class AASTex(Latex):
-    '''Writes (and reads) AASTeX tables
+    '''Write and read AASTeX tables.
     
     This class implements some AASTeX specific commands.
     AASTeX is used for the AAS (American Astronomical Society)
     publications like ApJ, ApJL and AJ.
-    Writes (and reads) LaTeX tables
     
-    This class implents some LaTeX specific commands.
-    Its main purpose is to write out a table in a form that LaTeX
-    can compile. It is beyond the scope to implement every possible 
-    LaTeX command, instead the focus is to generate a simple, yet 
-    syntactically valid LaTeX tables.
-    This class can also read simple LaTeX tables (one line per table row,
-    no ``\\multicolumn`` or similar constructs), spcifically, it can read the 
-    tables it writes.
-    
-    It derives from :class:`~asciitable.Latex` and accepts the same keywords (See there for documentation).
+    It derives from :class:`~asciitable.Latex` and accepts the same keywords (see :class:`~asciitable.Latex` for documentation).
     However, the keywords ``header_start``, ``header_end``, ``data_start`` and ``data_end`` in 
     ``latexdict`` have no effect.
     '''

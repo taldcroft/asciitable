@@ -10,6 +10,7 @@ Extension Reader Classes:
 * `CommentedHeader`: column names given in a line that begins with the comment character
 * `Daophot`: table from the IRAF DAOphot package
 * `Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* `Latex`: LaTeX tables (plain and AASTex)
 * `Memory`: table already in memory (list of lists, dict of lists, etc)
 * `NoHeader`: basic table with no header where columns are auto-named
 * `Rdb`: tab-separated values with an extra line after the column definition line

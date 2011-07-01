@@ -14,6 +14,7 @@ built-in `Extension Reader Classes`_:
 * :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
 * :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
 * :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.Latex`, :class:`~asciitable.AASTex`: LaTeX tables (plain and AASTex)
 * :class:`~asciitable.Memory`: table already in memory (list of lists, dict of lists, etc)
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
@@ -62,8 +63,8 @@ The latest git repository version is available at `<https://github.com/taldcroft
 Installation and test
 ---------------------
 
-The :mod:`asciitable` package includes a single module that must be made
-available to the Python interpreter.  
+The :mod:`asciitable` package includes a number of component modules that must
+be made available to the Python interpreter.
 
 Easy way
 ^^^^^^^^^^^
@@ -793,16 +794,21 @@ general and include a number of configurable attributes.  Others such as
 :class:`Cds` or :class:`Daophot` are specialized to read certain well-defined
 but idiosyncratic formats.
 
+* :class:`~asciitable.AASTex`: AASTeX `deluxetable` used for AAS journals
 * :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
 * :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
 * :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
 * :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
 * :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.Latex`: LaTeX table with datavalue in the `tabular` environment
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
 * :class:`~asciitable.Tab`: tab-separated values
-* :class:`~asciitable.Latex`: LaTeX table with datavalue in the `tabular` environment
-* :class:`~asciitable.AASTex`: AASTeX `deluxetable` used for AAS journals
+
+.. autoclass:: AASTex
+   :show-inheritance:
+   :members:
+   :undoc-members:
 
 .. autoclass:: Basic
    :show-inheritance:
@@ -829,6 +835,11 @@ but idiosyncratic formats.
    :members:
    :undoc-members:
 
+.. autoclass:: Latex
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
 .. autoclass:: Memory
    :show-inheritance:
    :members:
@@ -845,16 +856,6 @@ but idiosyncratic formats.
    :undoc-members:
 
 .. autoclass:: Tab
-   :show-inheritance:
-   :members:
-   :undoc-members:
-
-.. autoclass:: Latex
-   :show-inheritance:
-   :members:
-   :undoc-members:
-
-.. autoclass:: AASTex
    :show-inheritance:
    :members:
    :undoc-members:
