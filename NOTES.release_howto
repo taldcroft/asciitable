@@ -18,7 +18,7 @@ Linux
 /usr/bin/nosetests   # Python 2.4 on CentOS-5 system
 set pyroot=$HOME/soft/ActivePython
 $pyroot/2.6/bin/nosetests
-$pyroot/2.7/bin/nosetests
+$pyroot/2.7/bin/nosetests --with-doctest
 $pyroot/2.7_bare/bin/nosetests
 $pyroot/3.2/bin/nosetests
 

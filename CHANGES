@@ -1,3 +1,13 @@
+0.7.0.2
+=======
+Fixed CDS docstrings so they pass doctest.
+
+Thanks Segio Pascual for sending this fix.
+
+0.7.0.1
+=======
+Fixed setup.py to install asciitable package instead asciitable.py module.
+
 0.7.0
 =====
 This is a significant release with the following key features:

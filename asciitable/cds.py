@@ -213,10 +213,11 @@ class Cds(core.BaseReader):
     parameter indicating the CDS ReadMe file.  If not supplied it is assumed that
     the header information is at the top of the given table.  Examples::
 
-       >>> table = asciitable.read("t/cds.dat")
-       >>> table = asciitable.read("t/vizier/table1.dat", readme="t/vizier/ReadMe")
-       >>> table = asciitable.read("t/cds/multi/lhs2065.dat", readme="t/cds/multi/ReadMe")
-       >>> table = asciitable.read("t/cds/glob/lmxbrefs.dat", readme="t/cds/glob/ReadMe")
+      >>> import asciitable
+      >>> table = asciitable.read("t/cds.dat")
+      >>> table = asciitable.read("t/vizier/table1.dat", readme="t/vizier/ReadMe")
+      >>> table = asciitable.read("t/cds/multi/lhs2065.dat", readme="t/cds/multi/ReadMe")
+      >>> table = asciitable.read("t/cds/glob/lmxbrefs.dat", readme="t/cds/glob/ReadMe")
 
     **Using a reader object**
 
@@ -227,21 +228,24 @@ class Cds(core.BaseReader):
     ``InconsistentTableError`` is raised if the ``readme`` file does not
     have header information for the given table.
     
-        >>> readme = "t/vizier/ReadMe"
-        >>> r = asciitable.get_reader(asciitable.Cds, readme=readme)
-        >>> table = r.read("t/vizier/table1.dat")
-        >>> # table5.dat has the same ReadMe file
-        >>> table = r.read("t/vizier/table5.dat")
+      >>> readme = "t/vizier/ReadMe"
+      >>> r = asciitable.get_reader(asciitable.Cds, readme=readme)
+      >>> table = r.read("t/vizier/table1.dat")
+      >>> # table5.dat has the same ReadMe file
+      >>> table = r.read("t/vizier/table5.dat")
 
     If no ``readme`` parameter is specified, then the header
     information is assumed to be at the top of the given table.
 
-        >>> r = asciitable.get_reader(asciitable.Cds)
-        >>> table = r.read("t/cds.dat")
-        >>> #The following gives InconsistentTableError, since no
-        >>> #readme file was given and table1.dat does not have a header.
-        >>> table = r.read("t/vizier/table1.dat")
-    
+      >>> r = asciitable.get_reader(asciitable.Cds)
+      >>> table = r.read("t/cds.dat")
+      >>> #The following gives InconsistentTableError, since no
+      >>> #readme file was given and table1.dat does not have a header.
+      >>> table = r.read("t/vizier/table1.dat")
+      Traceback (most recent call last):
+        ...
+      InconsistentTableError: No CDS section delimiter found
+
     Caveats:
 
     * Format, Units, and Explanations are available in the ``Reader.cols`` attribute.
