@@ -160,7 +160,7 @@ class MemoryInputter(core.BaseInputter):
                 # If first_row_or_key is a row (in the case that table is
                 # list-like) then this will raise exception
                 table[first_row_or_key]
-            except (TypeError, IndexError):
+            except (TypeError, IndexError, ValueError):
                 # Table is list-like (python list-of-lists or numpy recarray)
                 lines = table
             else:
