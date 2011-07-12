@@ -149,13 +149,21 @@ def _guess(table, read_kwargs):
 
     # First try guessing
     for guess_kwargs in [read_kwargs.copy()] + _get_guess_kwargs_list():
+        guess_kwargs_ok = True  # guess_kwargs are consistent with user_kwargs?
         for key, val in read_kwargs.items():
             # Do guess_kwargs.update(read_kwargs) except that if guess_args has
             # a conflicting key/val pair then skip this guess entirely.
             if key not in guess_kwargs:
                 guess_kwargs[key] = val
             elif val != guess_kwargs[key]:
-                continue
+                guess_kwargs_ok = False
+                break
+
+        if not guess_kwargs_ok:
+            # User-supplied kwarg is inconsistent with the guess-supplied kwarg, e.g.
+            # user supplies delimiter="|" but the guess wants to try delimiter=" ", 
+            # so skip the guess entirely.
+            continue
 
         try:
             reader = get_reader(**guess_kwargs)
