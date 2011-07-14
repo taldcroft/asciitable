@@ -763,6 +763,10 @@ class BaseReader(object):
     ``header``, ``data``, ``inputter``, and ``outputter`` attributes.  Each
     of these is an object of the corresponding class.
 
+    There is one method ``inconsistent_hander`` that can be used to customize the
+    behavior of ``read()`` in the event that a data row doesn't match the header.
+    The default behavior is to raise an InconsistentTableError.
+
     """
     def __init__(self):
         self.header = BaseHeader()
