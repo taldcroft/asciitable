@@ -814,13 +814,21 @@ class BaseReader(object):
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
-            if len(str_vals) != n_data_cols:
-                errmsg = ('Number of header columns (%d) inconsistent with '
-                          'data columns (%d) at data line %d\n'
-                          'Header values: %s\n'
-                          'Data values: %s' % (len(cols), len(str_vals), i,
-                                               [x.name for x in cols], str_vals))
-                raise InconsistentTableError(errmsg)
+            if len(str_vals) != n_data_cols:                
+                str_vals = self.inconsistent_handler(str_vals,n_data_cols)
+                
+                #if str_vals is None, we skip this row
+                if str_vals is None:
+                    continue
+                
+                #otherwise, we raise an error only if it is still inconsistent
+                if len(str_vals) != n_data_cols:
+                    errmsg = ('Number of header columns (%d) inconsistent with '
+                              'data columns (%d) at data line %d\n'
+                              'Header values: %s\n'
+                              'Data values: %s' % (len(cols), len(str_vals), i,
+                                                   [x.name for x in cols], str_vals))
+                    raise InconsistentTableError(errmsg)
 
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
@@ -830,6 +838,26 @@ class BaseReader(object):
         self.cols = self.header.cols
 
         return self.table
+    
+    def inconsistent_handler(self,str_vals,ncols):
+        """Adjust or skip data entries if a row is inconsistent with the header.
+        
+        The default implementation does no adjustment, and hence will always trigger
+        an exception in read() any time the number of data entries does not match 
+        the header.
+        
+        Note that this will *not* be called if the row already matches the header.
+
+        :param str_vals: A list of value strings from the current row of the table.
+        :param ncols: The expected number of entries from the table header.
+        :returns: 
+            list of strings to be parsed into data entries in the output table. If
+            the length of this list does not match ``ncols``, an exception will be
+            raised in read().  Can also be None, in which case the row will be
+            skipped.
+        """
+        #an empty list will always trigger an InconsistentTableError in read()
+        return [] 
 
     @property
     def comment_lines(self):
