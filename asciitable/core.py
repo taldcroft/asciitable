@@ -819,7 +819,7 @@ class BaseReader(object):
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
             if len(str_vals) != n_data_cols:                
-                str_vals = self.inconsistent_handler(str_vals,n_data_cols)
+                str_vals = self.inconsistent_handler(str_vals, n_data_cols)
                 
                 #if str_vals is None, we skip this row
                 if str_vals is None:
@@ -861,7 +861,7 @@ class BaseReader(object):
             skipped.
         """
         #an empty list will always trigger an InconsistentTableError in read()
-        return [] 
+        return str_vals
 
     @property
     def comment_lines(self):

@@ -6,3 +6,4 @@ build/
 MANIFEST
 genfromtext.api
 asciitable.egg-info/
+wing_asciitable.wpr
