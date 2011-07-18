@@ -305,6 +305,15 @@ def test_set_guess_kwarg(numpy):
     assert(data.dtype.names == ('1 3.4 hello', ))
     assert(len(data) == 1)
 
+@has_numpy_and_not_has_numpy
+@raises(asciitable.InconsistentTableError)
+def test_read_rdb_wrong_type(numpy):
+    """Read RDB data with inconstent data type (except failure)"""
+    table = """col1\tcol2
+N\tN
+1\tHello"""
+    dat = asciitable.read(table, Reader=asciitable.Rdb)
+
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
     read a bunch of test files and verify columns and number of rows."""

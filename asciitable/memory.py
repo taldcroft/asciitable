@@ -113,7 +113,9 @@ class Memory(core.BaseReader):
         if hasattr(table, 'keywords'):
             self.keywords = table.keywords
 
-        self.outputter.default_converters = [((lambda vals: vals), core.AllType)]
+        self.outputter.default_converters = [((lambda vals: vals), core.IntType),
+                                             ((lambda vals: vals), core.FloatType),
+                                             ((lambda vals: vals), core.StrType)]
         self.table = self.outputter(cols)
         self.cols = self.header.cols
 
@@ -231,11 +233,13 @@ class MemoryHeader(core.BaseHeader):
                 elif 'string' in type_name:
                     col.type = core.StrType
         else:
-            basic_reader = core._get_reader(Reader=basic.BasicReader,
+            basic_reader = core._get_reader(Reader=basic.NoHeader,
                                             names=[col.name for col in self.cols], quotechar="'")
             data_in = tuple(' '.join(repr(vals[col.index]) for col in self.cols)
                             for vals in lines)
             data_out = basic_reader.read(data_in)
+            print 'data_in=', repr(data_in)
+            print 'data_out=', repr(data_out)
             for col, data_col in zip(self.cols, basic_reader.cols):
                 col.type = data_col.type
 
