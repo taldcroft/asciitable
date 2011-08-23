@@ -10,29 +10,10 @@ except ImportError:
     import io
 
 import asciitable
-
 if asciitable.has_numpy:
-    numpy_cases = (True, False)
     import numpy as np
-else:
-    numpy_cases = (False,)
 
-def has_numpy_and_not_has_numpy(func):
-    """Perform tests that should work for has_numpy==True and has_numpy==False"""
-    def wrap():
-        for numpy_case in numpy_cases:
-            func(numpy=numpy_case)
-    wrap.__name__ = func.__name__
-    return wrap
-
-def has_numpy(func):
-    """Tests that will only succeed if has_numpy == True"""
-    def wrap():
-        for numpy_case in numpy_cases:
-            if numpy_case is True:
-                func(numpy=numpy_case)
-    wrap.__name__ = func.__name__
-    return wrap
+from test.common import has_numpy_and_not_has_numpy, has_numpy
 
 @has_numpy_and_not_has_numpy
 def test_types_from_dat(numpy):
@@ -42,6 +23,7 @@ def test_types_from_dat(numpy):
     else:
         converters = {'a': [asciitable.convert_list(float)],
                       'e': [asciitable.convert_list(str)]}
+
     dat = asciitable.read(['a b c d e', '1 1 cat 2.1 4.2'], Reader=asciitable.Basic,
                           converters=converters, numpy=numpy)
 
