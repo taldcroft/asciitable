@@ -851,7 +851,7 @@ class BaseReader(object):
 
         return self.table
     
-    def inconsistent_handler(self,str_vals,ncols):
+    def inconsistent_handler(self, str_vals, ncols):
         """Adjust or skip data entries if a row is inconsistent with the header.
         
         The default implementation does no adjustment, and hence will always trigger

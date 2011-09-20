@@ -5,4 +5,5 @@ include t/vizier/*
 include doc/*.rst
 include CHANGES
 include VERSION
+include test/*.py
 exclude t/*~

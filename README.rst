@@ -25,7 +25,7 @@ reading or writing a table is largely broken into independent base class
 elements so that new formats can be accomodated by modifying the underlying
 class methods as needed.
 
-:Copyright: Smithsonian Astrophysical Observatory (2010) 
+:Copyright: Smithsonian Astrophysical Observatory (2011) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
 
 

@@ -32,8 +32,7 @@ git pull
 
 Prepare for release
 --------------------
-- Update __version__ in asciitable.py
-- Update VERSION
+- Update version in asciitable/version.py
 - Update CHANGES
 - Update setup.py
 - Update README.rst
@@ -54,7 +53,7 @@ cd asciitable-*
 
 /usr/bin/nosetests
 
-more asciitable/core.py   #confirm __version__ !!
+more asciitable/version.py   #confirm __version__ !!
 
 Install new source docs
 ---------------------------------------------

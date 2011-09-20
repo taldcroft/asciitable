@@ -305,7 +305,7 @@ Guess table format
 ^^^^^^^^^^^^^^^^^^^^^^
 If the ``guess`` parameter in |read| is set to True (which is the default) then
 |read| will try to guess the table format by cycling through a number of
-possible table format permuations and attemping to read the table in each case.
+possible table format permutations and attemping to read the table in each case.
 The first format which succeeds and will be used to read the table. To succeed
 the table must be successfully parsed by the Reader and satisfy the following
 column requirements:
@@ -316,7 +316,10 @@ column requirements:
    a vertical bar (|). 
 
 These requirements reduce the chance for a false positive where a table is
-successfully parsed with the wrong format.
+successfully parsed with the wrong format.  A common situation is a table
+with numeric columns but no header row, and in this case ``asciitable`` will
+auto-assign column names because of the restriction on column names that 
+look like a number.
 
 The order of guessing is shown by this Python code::
   
