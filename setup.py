@@ -26,7 +26,7 @@ elements so that new formats can be accomodated by modifying the underlying
 class methods as needed.
 """
 
-version = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
+from asciitable.version import version
 
 setup(name='asciitable',
       version=version,

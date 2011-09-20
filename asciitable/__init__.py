@@ -26,7 +26,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from asciitable.core import (__version__, has_numpy,
+from asciitable.core import (has_numpy,
                              InconsistentTableError,
                              NoType, StrType, NumType, FloatType, IntType, AllType,
                              Column, Keyword,
@@ -50,3 +50,4 @@ from asciitable.daophot import Daophot, DaophotReader
 from asciitable.memory import Memory, MemoryReader
 from asciitable.ui import (set_guess, get_reader, read, get_writer, write)
 
+from asciitable.version import version as __version__
