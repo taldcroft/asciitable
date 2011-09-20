@@ -29,10 +29,11 @@ def test_types_from_dat(numpy):
 
     reader = asciitable.get_reader(Reader=asciitable.Memory, numpy=numpy)
     reader.read(dat)
-    print 'numpy=',numpy
-    print 'dat=', repr(dat)
-    print 'reader.table=', repr(reader.table)
-    print 'types=', repr([x.type for x in reader.cols])
+
+    print('numpy=%s' % numpy)
+    print('dat=%s' % repr(dat))
+    print('reader.table=%s' % repr(reader.table))
+    print('types=%s' % repr([x.type for x in reader.cols]))
 
     assert_true(issubclass(reader.cols[0].type, asciitable.FloatType))
     assert_true(issubclass(reader.cols[1].type, asciitable.IntType))

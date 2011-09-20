@@ -651,7 +651,7 @@ def convert_numpy(numpy_type):
         converter_type = IntType
     elif 'float' in type_name:
         converter_type = FloatType
-    elif 'string' in type_name:
+    elif 'str' in type_name:
         converter_type = StrType
     else:
         converter_type = AllType

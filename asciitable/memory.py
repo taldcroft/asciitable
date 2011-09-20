@@ -278,7 +278,7 @@ class MemoryHeader(core.BaseHeader):
                     col.type = core.IntType
                 elif 'float' in type_name:
                     col.type = core.FloatType
-                elif 'string' in type_name:
+                elif 'str' in type_name:
                     col.type = core.StrType
         else:
             # lines is a list of lists or DictLikeNumpy.  
