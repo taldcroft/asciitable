@@ -1,0 +1,193 @@
+"""Asciitable: an extensible ASCII table reader and writer.
+
+fixedwidth.py:
+  Read or write a table with fixed width columns.
+
+:Copyright: Smithsonian Astrophysical Observatory (2011)
+:Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+"""
+
+## 
+## Redistribution and use in source and binary forms, with or without
+## modification, are permitted provided that the following conditions are met:
+##     * Redistributions of source code must retain the above copyright
+##       notice, this list of conditions and the following disclaimer.
+##     * Redistributions in binary form must reproduce the above copyright
+##       notice, this list of conditions and the following disclaimer in the
+##       documentation and/or other materials provided with the distribution.
+##     * Neither the name of the Smithsonian Astrophysical Observatory nor the
+##       names of its contributors may be used to endorse or promote products
+##       derived from this software without specific prior written permission.
+## 
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+## ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+## WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+## DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+## DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+## (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+## LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+## ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
+## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import re
+import asciitable.core as core
+from asciitable.core import io, next, izip, any
+
+class FixedWidthHeader(core.BaseHeader):
+    """Fixed width table header reader
+
+    :param auto_format: format string for auto-generating column names
+    :param start_line: None, int, or a function of ``lines`` that returns None or int
+    :param comment: regular expression for comment lines
+    :param splitter_class: Splitter class for splitting data lines into columns
+    :param names: list of names corresponding to each data column
+    :param include_names: list of names to include in output (default=None selects all names)
+    :param exclude_names: list of names to exlude from output (applied after ``include_names``)
+    """
+
+    def get_cols(self, lines):
+        """Initialize the header Column objects from the table ``lines``.
+
+        Based on the previously set Header attributes find or create the column names.
+        Sets ``self.cols`` with the list of Columns.  This list only includes the actual
+        requested columns after filtering by the include_names and exclude_names
+        attributes.  See ``self.names`` for the full list.
+
+        :param lines: list of table lines
+        :returns: None
+        """
+
+        start_line = core._get_line_index(self.start_line, self.process_lines(lines))
+        if start_line is None:
+            raise ValueError("Header line required at this time")
+            # No header line so auto-generate names from n_data_cols
+#             if self.names is None:
+#                 # Get the data values from the first line of table data to determine n_data_cols
+#                 try:
+#                     first_data_vals = next(self.data.get_str_vals())
+#                 except StopIteration:
+#                     raise InconsistentTableError('No data lines found so cannot autogenerate column names')
+#                 n_data_cols = len(first_data_vals)
+#                 self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
+
+#        elif self.names is None:
+
+        # No column names supplied so read them from header line in table.
+        for i, line in enumerate(self.process_lines(lines)):
+            if i == start_line:
+                break
+        else: # No header line matching
+            raise ValueError('No header line found in table')
+
+        # Split header row on the delimiter and determine column names and
+        # column start and end positions.  This might include null columns
+        # with zero length (e.g. for header row = "| col1 | col2 |").  Leave
+        # the null columns in self.names until the very end.
+        vals = line.split(self.splitter.delimiter)
+        starts = [0]
+        ends = []
+        for val in vals:
+            if val:
+                ends.append(starts[-1] + len(val))
+                starts.append(ends[-1] + 1)
+            else:
+                starts[-1] += 1
+        starts = starts[:-1]
+        self.names = [val.strip() for val in vals if val]
+        
+        # Filter full list of non-null column names with the include/exclude lists
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [core.Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        for col in self.cols:
+            col.start = starts[col.index]
+            col.end = ends[col.index]
+
+    def write(self, lines):
+        if self.start_line is not None:
+            for i, spacer_line in izip(range(self.start_line),
+                                       itertools.cycle(self.write_spacer_lines)):
+                lines.append(spacer_line)
+            lines.append(self.splitter.join([x.name for x in self.cols]))
+
+
+class FixedWidthData(core.BaseData):
+    """Base table data reader.
+
+    :param start_line: None, int, or a function of ``lines`` that returns None or int
+    :param end_line: None, int, or a function of ``lines`` that returns None or int
+    :param comment: Regular expression for comment lines
+    :param splitter_class: Splitter class for splitting data lines into columns
+    """
+
+    splitter_class = core.FixedWidthSplitter
+
+    def process_lines(self, lines):
+        """Strip out comment lines and blank lines from list of ``lines``
+
+        :param lines: all lines in table
+        :returns: list of lines
+        """
+        nonblank_lines = (x for x in lines if x.strip())
+        delimiter = self.splitter.delimiter
+        if self.comment:
+            re_comment = re.compile(self.comment)
+            return [x for x in nonblank_lines if not re_comment.match(x)]
+        else:
+            return [x for x in nonblank_lines]
+
+    def get_str_vals(self):
+        """Return a generator that returns a list of column values (as strings)
+        for each data line."""
+        return self.splitter(self.data_lines)
+
+    def write(self, lines):
+        if hasattr(self.start_line, '__call__'):
+            raise TypeError('Start_line attribute cannot be callable for write()')
+        else:
+            data_start_line = self.start_line or 0
+
+        while len(lines) < data_start_line:
+            lines.append(itertools.cycle(self.write_spacer_lines))
+
+        formatters = []
+        for col in self.cols:
+            formatter = self.formats.get(col.name, self.default_formatter)
+            if not hasattr(formatter, '__call__'):
+                formatter = _format_func(formatter)
+            col.formatter = formatter
+            
+        for vals in izip(*self.cols):
+            lines.append(self.splitter.join(vals))
+
+
+
+class FixedWidth(core.BaseReader):
+    """Read or write a fixed width table with a single header line at the top
+    followed by data lines to the end of the table.  Lines beginning with # as
+    the first non-whitespace character are comments.  
+    """
+    def __init__(self):
+        core.BaseReader.__init__(self)
+
+        self.header = FixedWidthHeader()
+        self.data = FixedWidthData()
+        self.data.header = self.header
+        self.header.data = self.data
+
+        self.header.splitter.delimiter = '|'
+        self.data.splitter.delimiter = '|'
+        self.header.start_line = 0
+        self.data.start_line = 1
+        self.header.comment = r'\s*#'
+        self.header.write_comment = '# '
+        self.data.comment = r'\s*#'
+        self.data.write_comment = '# '
+
+FixedWidthReader = FixedWidth
+
