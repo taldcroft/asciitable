@@ -127,25 +127,6 @@ class FixedWidthData(core.BaseData):
 
     splitter_class = core.FixedWidthSplitter
 
-    def process_lines(self, lines):
-        """Strip out comment lines and blank lines from list of ``lines``
-
-        :param lines: all lines in table
-        :returns: list of lines
-        """
-        nonblank_lines = (x for x in lines if x.strip())
-        delimiter = self.splitter.delimiter
-        if self.comment:
-            re_comment = re.compile(self.comment)
-            return [x for x in nonblank_lines if not re_comment.match(x)]
-        else:
-            return [x for x in nonblank_lines]
-
-    def get_str_vals(self):
-        """Return a generator that returns a list of column values (as strings)
-        for each data line."""
-        return self.splitter(self.data_lines)
-
     def write(self, lines):
         if hasattr(self.start_line, '__call__'):
             raise TypeError('Start_line attribute cannot be callable for write()')
@@ -181,7 +162,6 @@ class FixedWidth(core.BaseReader):
         self.header.data = self.data
 
         self.header.splitter.delimiter = '|'
-        self.data.splitter.delimiter = '|'
         self.header.start_line = 0
         self.data.start_line = 1
         self.header.comment = r'\s*#'
