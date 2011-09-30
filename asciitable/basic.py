@@ -209,14 +209,7 @@ class RdbHeader(core.BaseHeader):
         if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in raw_types):
             raise ValueError('RDB types definitions do not all match [num](N|S): %s' % raw_types)
         
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [core.Column(name=name, index=i) 
-                     for i, name in enumerate(self.names) if name in names]
+        self._set_cols_from_names()
         for col, raw_type in zip(self.cols, raw_types):
             col.raw_type = raw_type
             col.type = self.get_col_type(col)

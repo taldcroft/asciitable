@@ -359,6 +359,16 @@ class BaseHeader(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
        
+    def _set_cols_from_names(self):
+        # Filter full list of non-null column names with the include/exclude lists
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
 
@@ -393,13 +403,7 @@ class BaseHeader(object):
 
             self.names = next(self.splitter([line]))
         
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        self._set_cols_from_names()
 
     def process_lines(self, lines):
         """Generator to yield non-comment lines"""
