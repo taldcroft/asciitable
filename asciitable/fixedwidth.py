@@ -35,6 +35,10 @@ import asciitable.core as core
 from asciitable.core import io, next, izip, any
 
 def get_fixedwidth_params(line, delimiter):
+    """ Split row on the delimiter and determine column values and column
+    start and end positions.  This might include null columns with zero length
+    (e.g. for header row = "| col1 | col2 |").  Leave the null columns in
+    self.names until the very end."""
     vals = line.split(delimiter)
     starts = [0]
     ends = []
@@ -45,6 +49,9 @@ def get_fixedwidth_params(line, delimiter):
         else:
             starts[-1] += 1
     starts = starts[:-1]
+    vals = [x.strip() for x in vals if x]
+    if len(vals) != len(starts) or len(vals) != len(ends):
+        raise InconsistentTableError('Error parsing fixed width header')
     return vals, starts, ends
 
 class FixedWidthHeader(core.BaseHeader):
@@ -73,44 +80,36 @@ class FixedWidthHeader(core.BaseHeader):
 
         start_line = core._get_line_index(self.start_line, self.process_lines(lines))
         if start_line is None:
-            raise ValueError("Header line required at this time")
-            # No header line so auto-generate names from n_data_cols
-#             if self.names is None:
-#                 # Get the data values from the first line of table data to determine n_data_cols
-#                 try:
-#                     first_data_vals = next(self.data.get_str_vals())
-#                 except StopIteration:
-#                     raise InconsistentTableError('No data lines found so cannot autogenerate column names')
-#                 n_data_cols = len(first_data_vals)
-#                 self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
+            # Get the data values from the first line of table data to determine n_data_cols
+            data_lines = self.data.process_lines(lines)
+            if not data_lines:
+                raise InconsistentTableError('No data lines found so cannot autogenerate column names')
+            vals, starts, ends = get_fixedwidth_params(data_lines[0], self.splitter.delimiter)
+            if self.names is None:
+                # No col names specified so auto-generate corresponding to data columns
+                self.names = [self.auto_format % i for i in range(1, len(vals) + 1)]
 
-#        elif self.names is None:
+        else:
+            for i, line in enumerate(self.process_lines(lines)):
+                if i == start_line:
+                    break
+            else: # No header line matching
+                raise ValueError('No header line found in table')
 
-        # No column names supplied so read them from header line in table.
-        for i, line in enumerate(self.process_lines(lines)):
-            if i == start_line:
-                break
-        else: # No header line matching
-            raise ValueError('No header line found in table')
-
-        # Split header row on the delimiter and determine column names and
-        # column start and end positions.  This might include null columns
-        # with zero length (e.g. for header row = "| col1 | col2 |").  Leave
-        # the null columns in self.names until the very end.
-        vals, starts, ends = get_fixedwidth_params(line, self.splitter.delimiter)
-        self.names = [val.strip() for val in vals if val]
+            vals, starts, ends = get_fixedwidth_params(line, self.splitter.delimiter)
+            if self.names is None:
+                self.names = vals
         
-        # Filter full list of non-null column names with the include/exclude lists
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [core.Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
-        for col in self.cols:
+        self._set_cols_from_names()
+        self.n_data_cols = len(self.cols)
+        
+        # Set column start and end positions.  Also re-index the cols because
+        # the FixedWidthSplitter does NOT return the ignored cols (as is the
+        # case for typical delimiter-based splitters)
+        for i, col in enumerate(self.cols):
             col.start = starts[col.index]
             col.end = ends[col.index]
+            col.index = i
 
     def write(self, lines):
         if self.start_line is not None:
