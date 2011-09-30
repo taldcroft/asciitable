@@ -41,3 +41,21 @@ def test_read_2(numpy):
     assert_equal(dat[0][1], '"hel')
     assert_equal(dat[1][1], "df's wo")
     
+@has_numpy_and_not_has_numpy
+def test_read_3(numpy):
+    """Table with double delimiters"""
+    table = """
+|| Name ||   Phone ||         TCP||
+|  John  | 555-1234 |192.168.1.10X|
+|  Mary  | 555-2134 |192.168.1.12X|
+|   Bob  | 555-4527 | 192.168.1.9X|
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidth, guess=False)
+    print dat
+    assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
+    assert_equal(dat[1][0], "Mary")
+    assert_equal(dat[0][1], "555-1234")
+    assert_equal(dat[2][2], "192.168.1.9")
+    
+
+    # WRITE THIS TO test_fixedwidth.py and commit.
