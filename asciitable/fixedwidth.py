@@ -34,6 +34,19 @@ import re
 import asciitable.core as core
 from asciitable.core import io, next, izip, any
 
+def get_fixedwidth_params(line, delimiter):
+    vals = line.split(delimiter)
+    starts = [0]
+    ends = []
+    for val in vals:
+        if val:
+            ends.append(starts[-1] + len(val))
+            starts.append(ends[-1] + 1)
+        else:
+            starts[-1] += 1
+    starts = starts[:-1]
+    return vals, starts, ends
+
 class FixedWidthHeader(core.BaseHeader):
     """Fixed width table header reader
 
@@ -84,16 +97,7 @@ class FixedWidthHeader(core.BaseHeader):
         # column start and end positions.  This might include null columns
         # with zero length (e.g. for header row = "| col1 | col2 |").  Leave
         # the null columns in self.names until the very end.
-        vals = line.split(self.splitter.delimiter)
-        starts = [0]
-        ends = []
-        for val in vals:
-            if val:
-                ends.append(starts[-1] + len(val))
-                starts.append(ends[-1] + 1)
-            else:
-                starts[-1] += 1
-        starts = starts[:-1]
+        vals, starts, ends = get_fixedwidth_params(line, self.splitter.delimiter)
         self.names = [val.strip() for val in vals if val]
         
         # Filter full list of non-null column names with the include/exclude lists
