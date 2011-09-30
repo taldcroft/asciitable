@@ -34,26 +34,6 @@ import re
 import asciitable.core as core
 from asciitable.core import io, next, izip, any
 
-def get_fixedwidth_params(line, delimiter):
-    """ Split row on the delimiter and determine column values and column
-    start and end positions.  This might include null columns with zero length
-    (e.g. for header row = "| col1 | col2 |").  Leave the null columns in
-    self.names until the very end."""
-    vals = line.split(delimiter)
-    starts = [0]
-    ends = []
-    for val in vals:
-        if val:
-            ends.append(starts[-1] + len(val))
-            starts.append(ends[-1] + 1)
-        else:
-            starts[-1] += 1
-    starts = starts[:-1]
-    vals = [x.strip() for x in vals if x]
-    if len(vals) != len(starts) or len(vals) != len(ends):
-        raise InconsistentTableError('Error parsing fixed width header')
-    return vals, starts, ends
-
 class FixedWidthHeader(core.BaseHeader):
     """Fixed width table header reader
 
@@ -84,7 +64,8 @@ class FixedWidthHeader(core.BaseHeader):
             data_lines = self.data.process_lines(lines)
             if not data_lines:
                 raise InconsistentTableError('No data lines found so cannot autogenerate column names')
-            vals, starts, ends = get_fixedwidth_params(data_lines[0], self.splitter.delimiter)
+            vals, starts, ends = self.get_fixedwidth_params(data_lines[0])
+
             if self.names is None:
                 # No col names specified so auto-generate corresponding to data columns
                 self.names = [self.auto_format % i for i in range(1, len(vals) + 1)]
@@ -96,7 +77,7 @@ class FixedWidthHeader(core.BaseHeader):
             else: # No header line matching
                 raise ValueError('No header line found in table')
 
-            vals, starts, ends = get_fixedwidth_params(line, self.splitter.delimiter)
+            vals, starts, ends = self.get_fixedwidth_params(line)
             if self.names is None:
                 self.names = vals
         
@@ -110,6 +91,36 @@ class FixedWidthHeader(core.BaseHeader):
             col.start = starts[col.index]
             col.end = ends[col.index]
             col.index = i
+
+    def get_fixedwidth_params(self, line):
+        """ Split row on the delimiter and determine column values and column
+        start and end positions.  This might include null columns with zero length
+        (e.g. for header row = "| col1 | col2 |").  Leave the null columns in
+        self.names until the very end."""
+
+        if self.col_starts is not None and self.col_ends is not None:
+            starts = list(self.col_starts)  # could be any iterable, e.g. np.array
+            ends = [x + 1 for x in self.col_ends] # user supplies inclusive endpoint
+            if len(starts) != len(ends):
+                raise ValueError('Fixed width col_starts and col_ends must have the same length')
+            vals = [line[start:end].strip() for start, end in zip(starts, ends)]
+        else:
+            vals = line.split(self.splitter.delimiter)
+            starts = [0]
+            ends = []
+            for val in vals:
+                if val:
+                    ends.append(starts[-1] + len(val))
+                    starts.append(ends[-1] + 1)
+                else:
+                    starts[-1] += 1
+            starts = starts[:-1]
+            vals = [x.strip() for x in vals if x]
+            if len(vals) != len(starts) or len(vals) != len(ends):
+                raise InconsistentTableError('Error parsing fixed width header')
+
+        return vals, starts, ends
+
 
     def write(self, lines):
         if self.start_line is not None:
@@ -156,7 +167,7 @@ class FixedWidth(core.BaseReader):
     followed by data lines to the end of the table.  Lines beginning with # as
     the first non-whitespace character are comments.  
     """
-    def __init__(self):
+    def __init__(self, col_starts=None, col_ends=None):
         core.BaseReader.__init__(self)
 
         self.header = FixedWidthHeader()
@@ -171,6 +182,16 @@ class FixedWidth(core.BaseReader):
         self.header.write_comment = '# '
         self.data.comment = r'\s*#'
         self.data.write_comment = '# '
+        self.header.col_starts = col_starts
+        self.header.col_ends = col_ends
 
-FixedWidthReader = FixedWidth
+class FixedWidthNoHeader(FixedWidth):
+    """Read or write a fixed width table which has no header line.  
+    followed by data lines to the end of the table.  Lines beginning with # as
+    the first non-whitespace character are comments."""
+    def __init__(self, col_starts=None, col_ends=None):
+        FixedWidth.__init__(self, col_starts, col_ends)
+        self.header.start_line = None
+        self.data.start_line = 0
 
+        

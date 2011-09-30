@@ -143,3 +143,57 @@ def test_read_no_header_names(numpy):
     assert_equal(dat[0][1], "555-1234")
     assert_equal(dat[2][2], "192.168.1.9")
     
+@has_numpy_and_not_has_numpy
+def test_read_no_header_autocolumn_NoHeader(numpy):
+    """Table with no header row and auto-column naming"""
+    table = """
+|  John  | 555-1234 |192.168.1.10|
+|  Mary  | 555-2134 |192.168.1.12|
+|   Bob  | 555-4527 | 192.168.1.9|
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthNoHeader)
+    print dat
+    assert_equal(tuple(dat.dtype.names), ('col1', 'col2', 'col3'))
+    assert_equal(dat[1][0], "Mary")
+    assert_equal(dat[0][1], "555-1234")
+    assert_equal(dat[2][2], "192.168.1.9")
+    
+@has_numpy_and_not_has_numpy
+def test_read_no_header_names_NoHeader(numpy):
+    """Table with no header row and with col names provided.  Second
+    and third rows also have hanging spaces after final |."""
+    table = """
+|  John  | 555-1234 |192.168.1.10|
+|  Mary  | 555-2134 |192.168.1.12|  
+|   Bob  | 555-4527 | 192.168.1.9|  
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthNoHeader,
+                          names=('Name', 'Phone', 'TCP'))
+    print dat
+    assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
+    assert_equal(dat[1][0], "Mary")
+    assert_equal(dat[0][1], "555-1234")
+    assert_equal(dat[2][2], "192.168.1.9")
+    
+@has_numpy_and_not_has_numpy
+def test_read_col_starts(numpy):
+    """Table with no delimiter with column start and end values specified."""
+    table = """
+#    5   9     17  18      28
+#    |   |       ||         |
+  John   555- 1234 192.168.1.10
+  Mary   555- 2134 192.168.1.12
+   Bob   555- 4527  192.168.1.9
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthNoHeader,
+                          names=('Name', 'Phone', 'TCP'),
+                          col_starts=(0, 9, 18),
+                          col_ends=(5, 17, 28),
+                          )
+    print dat
+    assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
+    assert_equal(dat[0][1], "555- 1234")
+    assert_equal(dat[1][0], "Mary")
+    assert_equal(dat[1][2], "192.168.1.")
+    assert_equal(dat[2][2], "192.168.1")  # col_end=28 cuts this column off
+    
