@@ -42,9 +42,7 @@ class FixedWidthSplitter(core.BaseSplitter):
     This class requires that the Header class will have defined ``col.start``
     and ``col.end`` for each column.  The reference to the ``header.cols`` gets
     put in the splitter object by the base Reader.read() function just in time
-    for splitting data lines by a ``data`` object.  This class won't work for
-    splitting a fixed-width header but generally the header will be used to
-    determine the column start and end positions.
+    for splitting data lines by a ``data`` object. 
 
     Note that the ``start`` and ``end`` positions are defined in the pythonic
     style so line[start:end] is the desired substring for a column.  This splitter
@@ -77,7 +75,9 @@ class FixedWidthSplitter(core.BaseSplitter):
 
 
 class FixedWidthHeader(core.BaseHeader):
-    """Fixed width table header reader
+    """Fixed width table header reader.
+
+    The key settable class attributes are:
 
     :param auto_format: format string for auto-generating column names
     :param start_line: None, int, or a function of ``lines`` that returns None or int
@@ -86,6 +86,12 @@ class FixedWidthHeader(core.BaseHeader):
     :param names: list of names corresponding to each data column
     :param include_names: list of names to include in output (default=None selects all names)
     :param exclude_names: list of names to exlude from output (applied after ``include_names``)
+    :param position_line: row index of line that specifies position (default = 1)
+    :param position_char: character used to write the position line (default = "-")
+    :param col_starts: list of start positions for each column (0-based counting)
+    :param col_ends: list of end positions (inclusive) for each column
+    :param delimiter_pad: padding around delimiter when writing (default = None)
+    :param bookend: put the delimiter at start and end of line when writing (default = False)
     """
 
     position_line = None   # secondary header line position
@@ -169,7 +175,7 @@ class FixedWidthHeader(core.BaseHeader):
             col.index = i
 
     def get_fixedwidth_params(self, line):
-        """ Split ``line`` on the delimiter and determine column values and column
+        """Split ``line`` on the delimiter and determine column values and column
         start and end positions.  This might include null columns with zero length
         (e.g. for header row = "| col1 || col2 | col3 |" or
         header2_row = "-----    -------   -----").  The null columns are
@@ -261,8 +267,33 @@ class FixedWidthData(core.BaseData):
 
 
 class FixedWidth(core.BaseReader):
-    """Read or write a fixed width table with a single header line at the top
-    followed by data lines to the end of the table.   
+    """Read or write a fixed width table with a single header line that defines column
+    names and positions.  Examples::
+
+      # Bar delimiter in header and data
+      
+      |  Col1 |   Col2      |  Col3 |
+      |  1.2  | hello there |     3 |
+      |  2.4  | many words  |     7 |
+      
+      # Bar delimiter in header only
+      
+      Col1 |   Col2      | Col3 
+      1.2    hello there    3 
+      2.4    many words     7 
+      
+      # No delimiter with column positions specified as input
+      
+      Col1       Col2Col3 
+       1.2hello there   3 
+       2.4many words    7 
+
+    See the :ref:`fixed_width_gallery` for specific usage examples.
+
+    :param col_starts: list of start positions for each column (0-based counting)
+    :param col_ends: list of end positions (inclusive) for each column
+    :param delimiter_pad: padding around delimiter when writing (default = None)
+    :param bookend: put the delimiter at start and end of line when writing (default = False)
     """
     def __init__(self, col_starts=None, col_ends=None, delimiter_pad=' ', bookend=True):
         core.BaseReader.__init__(self)
@@ -287,9 +318,34 @@ class FixedWidth(core.BaseReader):
 
 
 class FixedWidthNoHeader(FixedWidth):
-    """Read or write a fixed width table which has no header line.  
-    followed by data lines to the end of the table.  Lines beginning with # as
-    the first non-whitespace character are comments."""
+    """Read or write a fixed width table which has no header line.  Column
+    names are either input (``names`` keyword) or auto-generated.  Column
+    positions are determined either by input (``col_starts`` and ``col_stops``
+    keywords) or by splitting the first data line.  In the latter case a
+    ``delimiter`` is required to split the data line.
+
+    Examples::
+
+      # Bar delimiter in header and data
+      
+      |  1.2  | hello there |     3 |
+      |  2.4  | many words  |     7 |
+      
+      # Compact table having no delimiter and column positions specified as input
+
+      1.2hello there3 
+      2.4many words 7 
+
+    This class is just a convenience wrapper around :class:`~asciitable.FixedWidth`
+    but with ``header.start_line = None`` and ``data.start_line = 0``.
+
+    See the :ref:`fixed_width_gallery` for specific usage examples.
+
+    :param col_starts: list of start positions for each column (0-based counting)
+    :param col_ends: list of end positions (inclusive) for each column
+    :param delimiter_pad: padding around delimiter when writing (default = None)
+    :param bookend: put the delimiter at start and end of line when writing (default = False)
+    """
     def __init__(self, col_starts=None, col_ends=None, delimiter_pad=' ', bookend=True):
         FixedWidth.__init__(self, col_starts, col_ends,
                             delimiter_pad=delimiter_pad, bookend=bookend)
@@ -298,15 +354,32 @@ class FixedWidthNoHeader(FixedWidth):
 
         
 class FixedWidthTwoLine(FixedWidth):
-    """Read or write a fixed width table which has two header lines followed by
-    data lines to the end of the table.  The the first header line defines the
-    column names and the second defines the column positions.  Example::
+    """Read or write a fixed width table which has two header lines.  The first
+    header line defines the column names and the second implicitly defines the
+    column positions.  Examples::
 
-       col1    col2
-      -----  ------------
-        1     bee flies
+      # Typical case with column extent defined by ---- under column names.
+
+       col1    col2         <== header_start = 0
+      -----  ------------   <== position_line = 1, position_char = "-"
+        1     bee flies     <== data_start = 2
         2     fish swims
 
+      # Pretty-printed table 
+
+      +------+------------+
+      | Col1 |   Col2     |
+      +------+------------+
+      |  1.2 | "hello"    |
+      |  2.4 | there world|
+      +------+------------+
+
+    See the :ref:`fixed_width_gallery` for specific usage examples.
+
+    :param position_line: row index of line that specifies position (default = 1)
+    :param position_char: character used to write the position line (default = "-")
+    :param delimiter_pad: padding around delimiter when writing (default = None)
+    :param bookend: put the delimiter at start and end of line when writing (default = False)
     """
     def __init__(self, position_line=1, position_char='-', delimiter_pad=None, bookend=False):
         FixedWidth.__init__(self, delimiter_pad=delimiter_pad, bookend=bookend)

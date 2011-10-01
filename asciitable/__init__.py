@@ -49,7 +49,8 @@ from asciitable.ipac import Ipac, IpacReader
 from asciitable.daophot import Daophot, DaophotReader
 from asciitable.memory import Memory, MemoryReader
 from asciitable.fixedwidth import (FixedWidth, FixedWidthNoHeader,
-                                   FixedWidthTwoLine, FixedWidthSplitter)
+                                   FixedWidthTwoLine, FixedWidthSplitter,
+                                   FixedWidthHeader, FixedWidthData)
 from asciitable.ui import (set_guess, get_reader, read, get_writer, write)
 
 from asciitable.version import version as __version__
