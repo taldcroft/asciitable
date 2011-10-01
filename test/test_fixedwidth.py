@@ -304,3 +304,56 @@ def test_write_formats(numpy):
 | 2.400    | 's worlds       |    2 |    2 |
 """)
     
+@has_numpy_and_not_has_numpy
+def test_read_twoline_normal(numpy):
+    """Typical fixed format table with two header lines (with some cruft
+    thrown in to test column positioning"""
+    table = """
+  Col1    Col2 
+  ----  --------- 
+   1.2xx"hello" 
+  2.4   's worlds
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthTwoLine)
+    assert_equal(dat.dtype.names, ('Col1', 'Col2'))
+    assert_almost_equal(dat[1][0], 2.4)
+    assert_equal(dat[0][1], '"hello"')
+    assert_equal(dat[1][1], "'s worlds")
+
+@has_numpy_and_not_has_numpy
+def test_read_twoline_ReST(numpy):
+    """Read restructured text table"""
+    table = """
+======= ===========
+  Col1    Col2 
+======= ===========
+  1.2   "hello" 
+  2.4   's worlds
+======= ===========
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthTwoLine,
+                          header_start=1, position_line=2, data_end=-1)
+    assert_equal(dat.dtype.names, ('Col1', 'Col2'))
+    assert_almost_equal(dat[1][0], 2.4)
+    assert_equal(dat[0][1], '"hello"')
+    assert_equal(dat[1][1], "'s worlds")
+
+@has_numpy_and_not_has_numpy
+def test_read_twoline_human(numpy):
+    """Read text table designed for humans and test having position line
+    before the header line"""
+    table = """
++------+----------+
+| Col1 |   Col2   |
++------|----------+
+|  1.2 | "hello"  |
+|  2.4 | 's worlds|
++------+----------+
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidthTwoLine, delimiter='+',
+                          header_start=1, position_line=0, data_start=3, data_end=-1)
+    assert_equal(dat.dtype.names, ('Col1', 'Col2'))
+    assert_almost_equal(dat[1][0], 2.4)
+    assert_equal(dat[0][1], '"hello"')
+    assert_equal(dat[1][1], "'s worlds")
+
