@@ -970,6 +970,9 @@ class FixedWidthSplitter(BaseSplitter):
     class does not have a hook for ``process_lines`` since that is generally not
     useful for fixed-width input.
     """
+    delimiter_pad = ''
+    bookend = False
+
     def __call__(self, lines):
         for line in lines:
             vals = [line[x.start:x.end] for x in self.cols]
@@ -977,6 +980,19 @@ class FixedWidthSplitter(BaseSplitter):
                 yield [self.process_val(x) for x in vals]
             else:
                 yield vals
+
+    def join(self, vals, widths):
+        pad = self.delimiter_pad or ''
+        delimiter = self.delimiter or ''
+        padded_delim = pad + delimiter + pad
+        if self.bookend:
+            bookend_left = delimiter + pad
+            bookend_right = pad + delimiter
+        else:
+            bookend_left = ''
+            bookend_right = ''
+        vals = [' ' * (width - len(val)) + val for val, width in zip(vals, widths)]
+        return bookend_left + padded_delim.join(vals) + bookend_right
 
 
 class WhitespaceSplitter(DefaultSplitter):

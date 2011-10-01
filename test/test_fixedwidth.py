@@ -1,6 +1,7 @@
 import re
 import glob
 from nose.tools import *
+import StringIO
 
 import asciitable
 if asciitable.has_numpy:
@@ -19,7 +20,6 @@ def test_read_normal(numpy):
 """
     reader = asciitable.get_reader(Reader=asciitable.FixedWidth)
     dat = reader.read(table)
-    print dat
     assert_equal(reader.header.colnames, ('Col1', 'Col2'))
     assert_almost_equal(dat[1][0], 2.4)
     assert_equal(dat[0][1], '"hello"')
@@ -36,9 +36,7 @@ def test_read_normal_names(numpy):
 """
     reader = asciitable.get_reader(Reader=asciitable.FixedWidth,
                                    names=('name1', 'name2'))
-#                                   include_names=('name1'))
     dat = reader.read(table)
-    print dat
     assert_equal(reader.header.colnames, ('name1', 'name2'))
     assert_almost_equal(dat[1][0], 2.4)
 
@@ -55,7 +53,6 @@ def test_read_normal_names_include(numpy):
                                    names=('name1', 'name2', 'name3'),
                                    include_names=('name1', 'name3'))
     dat = reader.read(table)
-    print dat
     assert_equal(reader.header.colnames, ('name1', 'name3'))
     assert_almost_equal(dat[1][0], 2.4)
     assert_equal(dat[0][1], 3)
@@ -72,8 +69,6 @@ def test_read_normal_exclude(numpy):
     reader = asciitable.get_reader(Reader=asciitable.FixedWidth,
                                    exclude_names=('Col1',))
     dat = reader.read(table)
-    print dat
-    # import pdb; pdb.set_trace()
     assert_equal(reader.header.colnames, ('Col2',))
     assert_almost_equal(dat[1][0], "'s worlds")
 
@@ -87,7 +82,6 @@ def test_read_weird(numpy):
 """
     reader = asciitable.get_reader(Reader=asciitable.FixedWidth)
     dat = reader.read(table)
-    print dat
     assert_equal(reader.header.colnames, ('Col1', 'Col2'))
     assert_almost_equal(dat[1][0], 2.4)
     assert_equal(dat[0][1], '"hel')
@@ -103,8 +97,22 @@ def test_read_double(numpy):
 |   Bob  | 555-4527 | 192.168.1.9X|
 """
     dat = asciitable.read(table, Reader=asciitable.FixedWidth, guess=False)
-    print dat
     assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
+    assert_equal(dat[1][0], "Mary")
+    assert_equal(dat[0][1], "555-1234")
+    assert_equal(dat[2][2], "192.168.1.9")
+    
+@has_numpy_and_not_has_numpy
+def test_read_space_delimiter(numpy):
+    """Table with space delimiter"""
+    table = """
+ Name  --Phone-    ----TCP-----
+ John  555-1234    192.168.1.10
+ Mary  555-2134    192.168.1.12
+  Bob  555-4527     192.168.1.9
+"""
+    dat = asciitable.read(table, Reader=asciitable.FixedWidth, guess=False, delimiter=' ')
+    assert_equal(tuple(dat.dtype.names), ('Name', '--Phone-', '----TCP-----'))
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[0][1], "555-1234")
     assert_equal(dat[2][2], "192.168.1.9")
@@ -119,7 +127,6 @@ def test_read_no_header_autocolumn(numpy):
 """
     dat = asciitable.read(table, Reader=asciitable.FixedWidth, guess=False,
                           header_start=None, data_start=0)
-    print dat
     assert_equal(tuple(dat.dtype.names), ('col1', 'col2', 'col3'))
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[0][1], "555-1234")
@@ -137,7 +144,6 @@ def test_read_no_header_names(numpy):
     dat = asciitable.read(table, Reader=asciitable.FixedWidth, guess=False,
                           header_start=None, data_start=0,
                           names=('Name', 'Phone', 'TCP'))
-    print dat
     assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[0][1], "555-1234")
@@ -152,7 +158,6 @@ def test_read_no_header_autocolumn_NoHeader(numpy):
 |   Bob  | 555-4527 | 192.168.1.9|
 """
     dat = asciitable.read(table, Reader=asciitable.FixedWidthNoHeader)
-    print dat
     assert_equal(tuple(dat.dtype.names), ('col1', 'col2', 'col3'))
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[0][1], "555-1234")
@@ -169,7 +174,6 @@ def test_read_no_header_names_NoHeader(numpy):
 """
     dat = asciitable.read(table, Reader=asciitable.FixedWidthNoHeader,
                           names=('Name', 'Phone', 'TCP'))
-    print dat
     assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[0][1], "555-1234")
@@ -190,10 +194,113 @@ def test_read_col_starts(numpy):
                           col_starts=(0, 9, 18),
                           col_ends=(5, 17, 28),
                           )
-    print dat
     assert_equal(tuple(dat.dtype.names), ('Name', 'Phone', 'TCP'))
     assert_equal(dat[0][1], "555- 1234")
     assert_equal(dat[1][0], "Mary")
     assert_equal(dat[1][2], "192.168.1.")
     assert_equal(dat[2][2], "192.168.1")  # col_end=28 cuts this column off
+    
+
+table = """\
+| Col1 |  Col2     |  Col3     |  Col4     |
+| 1.2  | "hello"   |  1        |  a        |
+| 2.4  | 's worlds |         2 |         2 |
+"""
+dat = asciitable.read(table, Reader=asciitable.FixedWidth)
+
+@has_numpy_and_not_has_numpy
+def test_write_normal(numpy):
+    """Write a table as a normal fixed width table."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidth)
+    assert_equal(out.getvalue(), """\
+| Col1 |      Col2 | Col3 | Col4 |
+|  1.2 |   "hello" |    1 |    a |
+|  2.4 | 's worlds |    2 |    2 |
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_no_pad(numpy):
+    """Write a table as a fixed width table with no padding."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidth, delimiter_pad=None)
+    assert_equal(out.getvalue(), """\
+|Col1|     Col2|Col3|Col4|
+| 1.2|  "hello"|   1|   a|
+| 2.4|'s worlds|   2|   2|
+""")
+    
+@has_numpy_and_not_has_numpy
+def test_write_no_bookend(numpy):
+    """Write a table as a fixed width table with no bookend."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidth, bookend=False)
+    assert_equal(out.getvalue(), """\
+Col1 |      Col2 | Col3 | Col4
+ 1.2 |   "hello" |    1 |    a
+ 2.4 | 's worlds |    2 |    2
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_no_delimiter(numpy):
+    """Write a table as a fixed width table with no delimiter."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidth, bookend=False, delimiter=None)
+    assert_equal(out.getvalue(), """\
+Col1       Col2  Col3  Col4
+ 1.2    "hello"     1     a
+ 2.4  's worlds     2     2
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_noheader_normal(numpy):
+    """Write a table as a normal fixed width table."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader)
+    assert_equal(out.getvalue(), """\
+| 1.2 |   "hello" | 1 | a |
+| 2.4 | 's worlds | 2 | 2 |
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_noheader_no_pad(numpy):
+    """Write a table as a fixed width table with no padding."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, delimiter_pad=None)
+    assert_equal(out.getvalue(), """\
+|1.2|  "hello"|1|a|
+|2.4|'s worlds|2|2|
+""")
+    
+@has_numpy_and_not_has_numpy
+def test_write_noheader_no_bookend(numpy):
+    """Write a table as a fixed width table with no bookend."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, bookend=False)
+    assert_equal(out.getvalue(), """\
+1.2 |   "hello" | 1 | a
+2.4 | 's worlds | 2 | 2
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_noheader_no_delimiter(numpy):
+    """Write a table as a fixed width table with no delimiter."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, bookend=False, delimiter=None)
+    assert_equal(out.getvalue(), """\
+1.2    "hello"  1  a
+2.4  's worlds  2  2
+""")
+
+@has_numpy_and_not_has_numpy
+def test_write_formats(numpy):
+    """Write a table as a fixed width table with no delimiter."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidth,
+                     formats={'Col1': '%-8.3f', 'Col2': '%-15s'})
+    assert_equal(out.getvalue(), """\
+|     Col1 |            Col2 | Col3 | Col4 |
+| 1.200    | "hello"         |    1 |    a |
+| 2.400    | 's worlds       |    2 |    2 |
+""")
     

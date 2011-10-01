@@ -31,6 +31,7 @@ fixedwidth.py:
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
+import itertools
 import asciitable.core as core
 from asciitable.core import io, next, izip, any
 
@@ -121,13 +122,13 @@ class FixedWidthHeader(core.BaseHeader):
 
         return vals, starts, ends
 
-
     def write(self, lines):
         if self.start_line is not None:
             for i, spacer_line in izip(range(self.start_line),
                                        itertools.cycle(self.write_spacer_lines)):
                 lines.append(spacer_line)
-            lines.append(self.splitter.join([x.name for x in self.cols]))
+            # Hheader line not written until data are formatted.  Until then
+            # it is not known how wide each column will be for fixed width.
 
 
 class FixedWidthData(core.BaseData):
@@ -147,27 +148,42 @@ class FixedWidthData(core.BaseData):
         else:
             data_start_line = self.start_line or 0
 
-        while len(lines) < data_start_line:
-            lines.append(itertools.cycle(self.write_spacer_lines))
-
         formatters = []
         for col in self.cols:
             formatter = self.formats.get(col.name, self.default_formatter)
             if not hasattr(formatter, '__call__'):
-                formatter = _format_func(formatter)
+                formatter = core._format_func(formatter)
             col.formatter = formatter
             
+        vals_list = []
+        # Col iterator does the formatting defined above so each val is a string
+        # and vals is a tuple of strings for all columns of each row
         for vals in izip(*self.cols):
-            lines.append(self.splitter.join(vals))
+            vals_list.append(vals)
+            
+        for i, col in enumerate(self.cols):
+            col.width = max([len(vals[i]) for vals in vals_list])
+            if self.header.start_line is not None:
+                col.width = max(col.width, len(col.name))
 
+        widths = [col.width for col in self.cols]
+        if self.header.start_line is not None:
+            lines.append(self.splitter.join([col.name for col in self.cols], widths))
+
+        while len(lines) < data_start_line:
+            lines.append(itertools.cycle(self.write_spacer_lines))
+
+        for vals in vals_list:
+            lines.append(self.splitter.join(vals, widths))
+
+        return lines
 
 
 class FixedWidth(core.BaseReader):
     """Read or write a fixed width table with a single header line at the top
-    followed by data lines to the end of the table.  Lines beginning with # as
-    the first non-whitespace character are comments.  
+    followed by data lines to the end of the table.   
     """
-    def __init__(self, col_starts=None, col_ends=None):
+    def __init__(self, col_starts=None, col_ends=None, delimiter_pad=' ', bookend=True):
         core.BaseReader.__init__(self)
 
         self.header = FixedWidthHeader()
@@ -176,6 +192,9 @@ class FixedWidth(core.BaseReader):
         self.header.data = self.data
 
         self.header.splitter.delimiter = '|'
+        self.data.splitter.delimiter = '|'
+        self.data.splitter.delimiter_pad = delimiter_pad
+        self.data.splitter.bookend = bookend
         self.header.start_line = 0
         self.data.start_line = 1
         self.header.comment = r'\s*#'
@@ -185,12 +204,14 @@ class FixedWidth(core.BaseReader):
         self.header.col_starts = col_starts
         self.header.col_ends = col_ends
 
+
 class FixedWidthNoHeader(FixedWidth):
     """Read or write a fixed width table which has no header line.  
     followed by data lines to the end of the table.  Lines beginning with # as
     the first non-whitespace character are comments."""
-    def __init__(self, col_starts=None, col_ends=None):
-        FixedWidth.__init__(self, col_starts, col_ends)
+    def __init__(self, col_starts=None, col_ends=None, delimiter_pad=' ', bookend=True):
+        FixedWidth.__init__(self, col_starts, col_ends,
+                            delimiter_pad=delimiter_pad, bookend=bookend)
         self.header.start_line = None
         self.data.start_line = 0
 
