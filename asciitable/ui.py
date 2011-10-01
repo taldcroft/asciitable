@@ -34,6 +34,7 @@ ui.py:
 
 import re
 import os
+import sys
 
 import asciitable.core as core
 import asciitable.basic as basic
@@ -240,12 +241,12 @@ def get_writer(Writer=None, **kwargs):
     writer = core._get_writer(Writer, **kwargs)
     return writer
 
-def write(table, output,  Writer=None, **kwargs):
+def write(table, output=sys.stdout,  Writer=None, **kwargs):
     """Write the input ``table`` to ``filename``.  Most of the default behavior
     for various parameters is determined by the Writer class.
 
     :param table: input table (Reader object, NumPy struct array, list of lists, etc)
-    :param output: output (filename, file-like object)
+    :param output: output [filename, file-like object] (default = sys.stdout)
     :param Writer: Writer class (default= :class:`~asciitable.Basic` )
     :param delimiter: column delimiter string
     :param write_comment: string defining a comment line in table
