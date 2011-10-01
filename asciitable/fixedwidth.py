@@ -207,12 +207,9 @@ class FixedWidthHeader(core.BaseHeader):
         return vals, starts, ends
 
     def write(self, lines):
-        if self.start_line is not None:
-            for i, spacer_line in izip(range(self.start_line),
-                                       itertools.cycle(self.write_spacer_lines)):
-                lines.append(spacer_line)
-            # Hheader line not written until data are formatted.  Until then
-            # it is not known how wide each column will be for fixed width.
+        # Header line not written until data are formatted.  Until then it is
+        # not known how wide each column will be for fixed width.
+        pass
 
 
 class FixedWidthData(core.BaseData):
@@ -227,11 +224,6 @@ class FixedWidthData(core.BaseData):
     splitter_class = FixedWidthSplitter
 
     def write(self, lines):
-        if hasattr(self.start_line, '__call__'):
-            raise TypeError('Start_line attribute cannot be callable for write()')
-        else:
-            data_start_line = self.start_line or 0
-
         formatters = []
         for col in self.cols:
             formatter = self.formats.get(col.name, self.default_formatter)
@@ -251,11 +243,16 @@ class FixedWidthData(core.BaseData):
                 col.width = max(col.width, len(col.name))
 
         widths = [col.width for col in self.cols]
+
         if self.header.start_line is not None:
             lines.append(self.splitter.join([col.name for col in self.cols], widths))
 
-        while len(lines) < data_start_line:
-            lines.append(itertools.cycle(self.write_spacer_lines))
+        if self.header.position_line is not None:
+            char = self.header.position_char
+            if len(char) != 1:
+                raise ValueError('Position_char="%s" must be a single character' % char)
+            vals = [char * col.width for col in self.cols]
+            lines.append(self.splitter.join(vals, widths))
 
         for vals in vals_list:
             lines.append(self.splitter.join(vals, widths))
@@ -311,11 +308,12 @@ class FixedWidthTwoLine(FixedWidth):
         2     fish swims
 
     """
-    def __init__(self, position_line=1, position_char='-', delimiter_pad=' ', bookend=True):
+    def __init__(self, position_line=1, position_char='-', delimiter_pad=None, bookend=False):
         FixedWidth.__init__(self, delimiter_pad=delimiter_pad, bookend=bookend)
         self.header.position_line = position_line
         self.header.position_char = position_char
         self.data.start_line = position_line + 1
         self.header.splitter.delimiter = ' '
+        self.data.splitter.delimiter = ' '
 
         

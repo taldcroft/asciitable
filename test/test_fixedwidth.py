@@ -357,3 +357,41 @@ def test_read_twoline_human(numpy):
     assert_equal(dat[0][1], '"hello"')
     assert_equal(dat[1][1], "'s worlds")
 
+@has_numpy_and_not_has_numpy
+def test_write_twoline_normal(numpy):
+    """Write a table as a normal fixed width table."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine)
+    assert_equal(out.getvalue(), """\
+Col1      Col2 Col3 Col4
+---- --------- ---- ----
+ 1.2   "hello"    1    a
+ 2.4 's worlds    2    2
+""")
+
+
+@has_numpy_and_not_has_numpy
+def test_write_twoline_no_pad(numpy):
+    """Write a table as a fixed width table with no padding."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine, delimiter_pad=' ',
+                     position_char='=')
+    assert_equal(out.getvalue(), """\
+Col1        Col2   Col3   Col4
+====   =========   ====   ====
+ 1.2     "hello"      1      a
+ 2.4   's worlds      2      2
+""")
+    
+@has_numpy_and_not_has_numpy
+def test_write_twoline_no_bookend(numpy):
+    """Write a table as a fixed width table with no bookend."""
+    out = StringIO.StringIO()
+    asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine, bookend=True, delimiter='|')
+    assert_equal(out.getvalue(), """\
+|Col1|     Col2|Col3|Col4|
+|----|---------|----|----|
+| 1.2|  "hello"|   1|   a|
+| 2.4|'s worlds|   2|   2|
+""")
+
