@@ -9,6 +9,9 @@ from asciitable.core import io
 
 from test.common import has_numpy_and_not_has_numpy, has_numpy
 
+def assert_equal_splitlines(arg1, arg2):
+    assert_equal(arg1.splitlines(), arg2.splitlines())
+
 @has_numpy_and_not_has_numpy
 def test_read_normal(numpy):
     """Nice, typical fixed format table"""
@@ -213,7 +216,7 @@ def test_write_normal(numpy):
     """Write a table as a normal fixed width table."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidth)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 | Col1 |      Col2 | Col3 | Col4 |
 |  1.2 |   "hello" |    1 |    a |
 |  2.4 | 's worlds |    2 |    2 |
@@ -224,7 +227,7 @@ def test_write_no_pad(numpy):
     """Write a table as a fixed width table with no padding."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidth, delimiter_pad=None)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 |Col1|     Col2|Col3|Col4|
 | 1.2|  "hello"|   1|   a|
 | 2.4|'s worlds|   2|   2|
@@ -235,7 +238,7 @@ def test_write_no_bookend(numpy):
     """Write a table as a fixed width table with no bookend."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidth, bookend=False)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 Col1 |      Col2 | Col3 | Col4
  1.2 |   "hello" |    1 |    a
  2.4 | 's worlds |    2 |    2
@@ -246,7 +249,7 @@ def test_write_no_delimiter(numpy):
     """Write a table as a fixed width table with no delimiter."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidth, bookend=False, delimiter=None)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 Col1       Col2  Col3  Col4
  1.2    "hello"     1     a
  2.4  's worlds     2     2
@@ -257,7 +260,7 @@ def test_write_noheader_normal(numpy):
     """Write a table as a normal fixed width table."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 | 1.2 |   "hello" | 1 | a |
 | 2.4 | 's worlds | 2 | 2 |
 """)
@@ -267,7 +270,7 @@ def test_write_noheader_no_pad(numpy):
     """Write a table as a fixed width table with no padding."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, delimiter_pad=None)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 |1.2|  "hello"|1|a|
 |2.4|'s worlds|2|2|
 """)
@@ -277,7 +280,7 @@ def test_write_noheader_no_bookend(numpy):
     """Write a table as a fixed width table with no bookend."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, bookend=False)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 1.2 |   "hello" | 1 | a
 2.4 | 's worlds | 2 | 2
 """)
@@ -287,7 +290,7 @@ def test_write_noheader_no_delimiter(numpy):
     """Write a table as a fixed width table with no delimiter."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthNoHeader, bookend=False, delimiter=None)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 1.2    "hello"  1  a
 2.4  's worlds  2  2
 """)
@@ -298,7 +301,7 @@ def test_write_formats(numpy):
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidth,
                      formats={'Col1': '%-8.3f', 'Col2': '%-15s'})
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 |     Col1 |            Col2 | Col3 | Col4 |
 | 1.200    | "hello"         |    1 |    a |
 | 2.400    | 's worlds       |    2 |    2 |
@@ -362,7 +365,7 @@ def test_write_twoline_normal(numpy):
     """Write a table as a normal fixed width table."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine)
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 Col1      Col2 Col3 Col4
 ---- --------- ---- ----
  1.2   "hello"    1    a
@@ -376,7 +379,7 @@ def test_write_twoline_no_pad(numpy):
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine, delimiter_pad=' ',
                      position_char='=')
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 Col1        Col2   Col3   Col4
 ====   =========   ====   ====
  1.2     "hello"      1      a
@@ -388,7 +391,7 @@ def test_write_twoline_no_bookend(numpy):
     """Write a table as a fixed width table with no bookend."""
     out = io.StringIO()
     asciitable.write(dat, out, Writer=asciitable.FixedWidthTwoLine, bookend=True, delimiter='|')
-    assert_equal(out.getvalue(), """\
+    assert_equal_splitlines(out.getvalue(), """\
 |Col1|     Col2|Col3|Col4|
 |----|---------|----|----|
 | 1.2|  "hello"|   1|   a|
