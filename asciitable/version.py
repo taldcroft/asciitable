@@ -47,7 +47,7 @@ def _get_git_devstr():
     if p.returncode != 0:
         return ''
     else:
-        nrev = stdout.count('\n')
+        nrev = stdout.decode('ascii').count('\n')
         return  '-r%i' % nrev
     
 if not release:
