@@ -35,6 +35,7 @@ import itertools
 import re
 
 import asciitable.core as core
+import asciitable.fixedwidth as fixedwidth
 
 class CdsHeader(core.BaseHeader):
     col_type_map = {'e': core.FloatType,
@@ -163,6 +164,7 @@ class CdsHeader(core.BaseHeader):
             names.difference_update(self.exclude_names)
             
         self.cols = [x for x in cols if x.name in names]
+        self.n_data_cols = len(self.cols)
 
         # Re-index the cols because the FixedWidthSplitter does NOT return the ignored
         # cols (as is the case for typical delimiter-based splitters)
@@ -173,7 +175,7 @@ class CdsHeader(core.BaseHeader):
 class CdsData(core.BaseData):
     """CDS table data reader
     """
-    splitter_class = core.FixedWidthSplitter
+    splitter_class = fixedwidth.FixedWidthSplitter
     
     def process_lines(self, lines):
         """Skip over CDS header by finding the last section delimiter"""

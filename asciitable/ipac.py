@@ -31,6 +31,7 @@ ipac.py:
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import asciitable.core as core
+import asciitable.fixedwidth as fixedwidth
 
 class Ipac(core.BaseReader):
     """Read an IPAC format table:
@@ -161,6 +162,6 @@ class IpacHeader(core.BaseHeader):
 
 class IpacData(core.BaseData):
     """IPAC table data reader"""
-    splitter_class = core.FixedWidthSplitter
+    splitter_class = fixedwidth.FixedWidthSplitter
     comment = r'[|\\]'
     

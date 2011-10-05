@@ -9,6 +9,7 @@ Extension Reader Classes:
 * **Cds**: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
 * **CommentedHeader**: column names given in a line that begins with the comment character
 * **Daophot**: table from the IRAF DAOphot package
+* **FixedWidth**: table with fixed-width columns
 * **Ipac**: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
 * **Latex**: LaTeX tables (plain and AASTex)
 * **Memory**: table already in memory (list of lists, dict of lists, etc)

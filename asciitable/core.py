@@ -359,6 +359,16 @@ class BaseHeader(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
        
+    def _set_cols_from_names(self):
+        # Filter full list of non-null column names with the include/exclude lists
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
 
@@ -393,13 +403,7 @@ class BaseHeader(object):
 
             self.names = next(self.splitter([line]))
         
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        self._set_cols_from_names()
 
     def process_lines(self, lines):
         """Generator to yield non-comment lines"""
@@ -421,6 +425,22 @@ class BaseHeader(object):
     def colnames(self):
         """Return the column names of the table"""
         return tuple(col.name for col in self.cols)
+
+    def _get_n_data_cols(self):
+        """Return the number of expected data columns from data splitting.
+        This is either explicitly set (typically for fixedwidth splitters)
+        or set to self.names otherwise.
+        """
+        if not hasattr(self, '_n_data_cols'):
+            self._n_data_cols = len(self.names)
+        return self._n_data_cols
+
+    def _set_n_data_cols(self, val):
+        """Return the number of expected data columns from data splitting.
+        """
+        self._n_data_cols = val
+
+    n_data_cols = property(_get_n_data_cols, _set_n_data_cols)
 
     def get_type_map_key(self, col):
         return col.raw_type
@@ -822,7 +842,7 @@ class BaseReader(object):
         self.data.get_data_lines(self.lines)
         self.header.get_cols(self.lines)
         cols = self.header.cols         # header.cols corresponds to *output* columns requested
-        n_data_cols = len(self.header.names) # header.names corresponds to *all* header columns in table
+        n_data_cols = self.header.n_data_cols # number of data cols expected from splitter
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
@@ -932,31 +952,6 @@ class ContinuationLinesInputter(BaseInputter):
                 parts = []
 
         return outlines
-
-
-class FixedWidthSplitter(BaseSplitter):
-    """Split line based on fixed start and end positions for each ``col`` in
-    ``self.cols``.
-
-    This class requires that the Header class will have defined ``col.start``
-    and ``col.end`` for each column.  The reference to the ``header.cols`` gets
-    put in the splitter object by the base Reader.read() function just in time
-    for splitting data lines by a ``data`` object.  This class won't work for
-    splitting a fixed-width header but generally the header will be used to
-    determine the column start and end positions.
-
-    Note that the ``start`` and ``end`` positions are defined in the pythonic
-    style so line[start:end] is the desired substring for a column.  This splitter
-    class does not have a hook for ``process_lines`` since that is generally not
-    useful for fixed-width input.
-    """
-    def __call__(self, lines):
-        for line in lines:
-            vals = [line[x.start:x.end] for x in self.cols]
-            if self.process_val:
-                yield [self.process_val(x) for x in vals]
-            else:
-                yield vals
 
 
 class WhitespaceSplitter(DefaultSplitter):

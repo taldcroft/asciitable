@@ -1,20 +1,14 @@
 """
-Version numbering for asciitable. The `major`, `minor`, and `bugfix` varaibles hold
-the respective parts of the version number (bugfix is '0' if absent). The 
-`release` variable is True if this is a release, and False if this is a 
-development version. For the actual version string, use::
+Version numbering for this module. The `major`, `minor`, and `bugfix` variables
+hold the respective parts of the version number (bugfix is '0' if absent). The
+`release` variable is True if this is a release, and False if this is a
+development version.
 
-    from astropy.version import version
-    
-or::
-
-    from astropy import __version__
-    
-NOTE: this code copied from astropy.version and modified.  Any license restrictions
+NOTE: this code copied from astropy.version and simplified.  Any license restrictions
 therein are applicable.
 """
 
-version = '0.7.1'
+version = '0.8.0'
 
 _versplit = version.replace('dev', '').split('.')
 major = int(_versplit[0])
@@ -27,21 +21,14 @@ del _versplit
 
 release = not version.endswith('dev')
 
-def _get_git_devstr(sha=False):
-    """Determines the number of revisions in this repository.
-
-    Parameters
-    ----------
-    sha : bool
-        If True, the full SHA1 hash will be at the end of the devstr. Otherwise,
-        the total count of commits in the repository will be used as a "revision
-        number".
+def _get_git_devstr():
+    """Determines the number of revisions in this repository and returns "" if
+    this is not possible.
 
     Returns
     -------
     devstr : str
-        A string that begins with 'dev' to be appended to the astropy version
-        number string.
+        A string that begins with 'dev' to be appended to the version number string.
         
     """
     from os import path
@@ -57,18 +44,11 @@ def _get_git_devstr(sha=False):
               stdout=PIPE, stderr=PIPE, stdin=PIPE)
     stdout, stderr = p.communicate()
         
-    if p.returncode == 128:
-        warn('No git repository present! Using default dev version.')
+    if p.returncode != 0:
         return ''
-    elif p.returncode != 0:
-        warn('Git failed while determining revision count: '+stderr)
-        return ''
-    
-    if sha:
-        return '-git-'+stdout[:40]
     else:
-        nrev = stdout.count('\n')
-        return  '-r%i'%nrev
+        nrev = stdout.decode('ascii').count('\n')
+        return  '-r%i' % nrev
     
 if not release:
-    version = version + _get_git_devstr(False)
+    version = version + _get_git_devstr()

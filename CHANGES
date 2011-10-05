@@ -1,3 +1,7 @@
+0.8.0
+=====
+Add support for reading and writing fixed width tables.
+
 0.7.1
 =====
 Minor features and bug fix release:

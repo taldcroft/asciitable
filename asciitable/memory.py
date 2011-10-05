@@ -258,14 +258,7 @@ class MemoryHeader(core.BaseHeader):
                 n_data_cols = len(first_data_vals)
                 self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
 
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [core.Column(name=x, index=i) for i, x in enumerate(self.names)
-                     if x in names]
+        self._set_cols_from_names()
 
         # ``lines`` could be one of: NumPy recarray, DictLikeNumpy obj, Python
         # list of lists. If NumPy recarray then set col.type accordingly.  In
