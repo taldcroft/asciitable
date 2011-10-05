@@ -73,9 +73,10 @@ git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
 
 git checkout master
+git fetch      # make sure nothing happened to master ??
+git merge --no-ff <newbranch> 
 git tag -a <VERSION>
   Include CHANGES
-git merge <newbranch>
 git push [--dry-run] origin 
 
 Update PyPI
