@@ -74,14 +74,26 @@ ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PE
 \\end{deluxetable}
 """
          ),
-
-    dict(kwargs=dict(Writer=asciitable.Latex, caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|lcccccccccc|'),
+    dict(kwargs=dict(Writer=asciitable.AASTex, caption = 'Mag values \\label{tab1}', latexdict = {'units':{'MAG': '[mag]', 'XCENTER': '[pixel]'}}),
+         out="""\
+\\begin{deluxetable}{ccccccccccc}
+\\tablecaption{Mag values \\label{tab1}}
+\\tablehead{\\colhead{ID} & \\colhead{XCENTER} & \\colhead{YCENTER} & \\colhead{MAG} & \\colhead{MERR} & \\colhead{MSKY} & \\colhead{NITER} & \\colhead{SHARPNESS} & \\colhead{CHI} & \\colhead{PIER} & \\colhead{PERROR}\\\\ \\colhead{ } & \\colhead{[pixel]} & \\colhead{ } & \\colhead{[mag]} & \\colhead{ } & \\colhead{ } & \\colhead{ } & \\colhead{ } & \\colhead{ } & \\colhead{ } & \\colhead{ }}
+\\startdata
+14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
+18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
+\\enddata
+\\end{deluxetable}
+"""
+         ),
+    dict(kwargs=dict(Writer=asciitable.Latex, caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline'], 'units':{'MAG': '[mag]', 'XCENTER': '[pixel]'}}, col_align='|lcccccccccc|'),
          out="""\
 \\begin{table}
 \\begin{center}
 \\caption{Mag values \\label{tab1}}
 \\begin{tabular}{|lcccccccccc|}
 ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
+  & [pixel] &   & [mag] &   &   &   &   &   &   &   \\\\
 14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
 18 & 18.114 & 280.17 & 22.329 & 0.206 & 30.12784 & 4 & -2.544 & 1.104 & 0 & No_error \\\\
 \\hline
