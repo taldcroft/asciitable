@@ -42,7 +42,7 @@ latexdicts ={'AA':  {'tabletype': 'table',
              'template': {'tabletype': 'tabletype', 'caption': 'caption',
                  'col_align': 'col_align', 'preamble': 'preamble', 'header_start': 'header_start',
                  'header_end': 'header_end', 'data_start': 'data_start',
-                 'data_end': 'data_end', 'tablefoot': 'tablefoot'}
+                 'data_end': 'data_end', 'tablefoot': 'tablefoot', 'units': {'col1': 'unit of col1', 'col2': 'unit of col2'}}
             }
 
 def add_dictval_to_list(adict, key, alist):
@@ -94,6 +94,8 @@ class LatexHeader(core.BaseHeader):
         lines.append(self.header_start + r'{' + self.latex['col_align'] + r'}')
         add_dictval_to_list(self.latex, 'header_start', lines)
         lines.append(self.splitter.join([x.name for x in self.cols]))
+        if 'units' in self.latex.keys():
+            lines.append(self.splitter.join([self.latex['units'].get(x.name, ' ') for x in self.cols]))
         add_dictval_to_list(self.latex, 'header_end', lines)
                 
 
@@ -143,7 +145,7 @@ class LatexSplitter(core.BaseSplitter):
     def process_val(self, val):
         """Remove whitespace and {} at the beginning or end of value."""
         val = val.strip()
-        if (val[0] == '{') and (val[-1] == '}'):
+        if val and (val[0] == '{') and (val[-1] == '}'):
             val = val[1:-1]
         return val
     
@@ -197,7 +199,21 @@ class Latex(core.BaseReader):
         * preamble, header_start, header_end, data_start, data_end, tablefoot: Pure LaTeX
             Each one can be a string or a list of strings. These strings will be inserted into the table
             without any further processing. See the examples below.
+        * units : dictionary of strings
+            Keys in this dictionary should be names of columns. If present,
+            a line in the LaTeX table directly below the column names is 
+            added, which contains the values of the dictionary. Example::
     
+            import asciitable
+            import asciitable.latex
+            import sys
+            data = {'name': ['bike', 'car'], 'mass': [75,1200], 'speed': [10, 130]}
+            asciitable.write(data, sys.stdout, Writer = asciitable.Latex,
+                             latexdict = {'units': {'mass': 'kg', 'speed': 'km/h'}})
+            
+            If the column has no entry in the `units` dictionary, it defaults
+            to `' '`.
+                
         Run the following code to see where each element of the dictionary is inserted in the
         LaTeX table::
         
@@ -249,7 +265,7 @@ class Latex(core.BaseReader):
         # with data and header
         self.header.latex = self.latex
         self.data.latex = self.latex
-
+        self.latex['tabletype'] = 'table'
         self.latex.update(latexdict)
         if caption: self.latex['caption'] = caption
         if col_align: self.latex['col_align'] = col_align
@@ -288,6 +304,8 @@ class AASTexHeader(LatexHeader):
         if 'caption' in self.latex.keys():
             lines.append(r'\tablecaption{' + self.latex['caption'] +'}')
         tablehead = ' & '.join([r'\colhead{' + x.name + '}' for x in self.cols])
+        if 'units' in self.latex.keys():
+            tablehead += r'\\ ' + (self.splitter.join([ self.latex['units'].get(x.name, ' ') for x in self.cols]))
         lines.append(r'\tablehead{' + tablehead + '}')
 
 
@@ -360,24 +378,3 @@ class AASTex(Latex):
         self.data.latex = self.latex
 
 AASTexReader = AASTex
-
-
-# make these lines in test caes and in documentation
-
-#dat = {'cola':[1,2], 'colb':[3,4]}
-#asciitable.write(dat, sys.stdout, Writer = asciitable.Latex, caption = 'Mag values \\label{tab1}', latexdict = {'preamble':'\\begin{center}', 'tablefoot':'\\end{center}', 'data_end':['\\hline','\\hline']}, col_align='|ll|')
-#\begin{table}
-#\begin{center}
-#\caption{Mag values \label{tab1}}
-#\begin{tabular}{|ll|}
-#\hline \hline
-#cola & colb \\
-#\hline
-#1 & 3 \\
-#2 & 4 \\
-#\hline
-#\hline
-#\end{tabular}
-#\end{center}
-#\end{table}
-
