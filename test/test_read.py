@@ -4,11 +4,10 @@ import math
 from nose.tools import *
 
 import asciitable
-
 if asciitable.has_numpy:
-    numpy_cases = (True, False)
-else:
-    numpy_cases = (False,)
+    import numpy as np
+
+from test.common import has_numpy_and_not_has_numpy, has_numpy
 
 try:
     from math import isnan
@@ -17,23 +16,6 @@ except ImportError:
         from numpy import isnan
     except ImportError:
         print('Tests requiring isnan will fail')
-
-def has_numpy_and_not_has_numpy(func):
-    """Perform tests that should work for has_numpy==True and has_numpy==False"""
-    def wrap():
-        for numpy_case in numpy_cases:
-            func(numpy=numpy_case)
-    wrap.__name__ = func.__name__
-    return wrap
-
-def has_numpy(func):
-    """Tests that will only succeed if has_numpy == True"""
-    def wrap():
-        for numpy_case in numpy_cases:
-            if numpy_case is True:
-                func(numpy=numpy_case)
-    wrap.__name__ = func.__name__
-    return wrap
 
 @has_numpy_and_not_has_numpy
 def test_read_all_files(numpy):
@@ -58,14 +40,14 @@ def test_guess_all_files(numpy):
         print('\n\n******** READING %s' % testfile['name'])
         if testfile.get('requires_numpy') and not asciitable.has_numpy:
             return
-        # Copy read options except for Reader, delimiter and quotechar which 
-        # are guessed.
-        guess_opts = dict((k, v) for k, v in testfile['opts'].items()
-                          if k not in ('Reader', 'delimiter', 'quotechar'))
-        table = asciitable.read(testfile['name'], numpy=numpy, guess=True, **guess_opts)
-        assert_equal(table.dtype.names, testfile['cols'])
-        for colname in table.dtype.names:
-            assert_equal(len(table[colname]), testfile['nrows'])
+        for filter_read_opts in (['Reader', 'delimiter', 'quotechar'], []):
+            # Copy read options except for those in filter_read_opts
+            guess_opts = dict((k, v) for k, v in testfile['opts'].items()
+                              if k not in filter_read_opts)
+            table = asciitable.read(testfile['name'], numpy=numpy, guess=True, **guess_opts)
+            assert_equal(table.dtype.names, testfile['cols'])
+            for colname in table.dtype.names:
+                assert_equal(len(table[colname]), testfile['nrows'])
 
 @has_numpy
 def test_daophot_header_keywords(numpy):
@@ -89,7 +71,8 @@ def test_daophot_header_keywords(numpy):
 @has_numpy_and_not_has_numpy
 @raises(asciitable.InconsistentTableError)
 def test_empty_table_no_header(numpy):
-    table = asciitable.read('t/no_data_without_header.dat', Reader=asciitable.NoHeader, numpy=numpy, guess=False)
+    table = asciitable.read('t/no_data_without_header.dat', Reader=asciitable.NoHeader,
+                            numpy=numpy, guess=False)
 
 @has_numpy_and_not_has_numpy
 @raises(asciitable.InconsistentTableError)
@@ -123,7 +106,8 @@ def test_set_names(numpy):
 def test_set_include_names(numpy):
     names = ('c1','c2','c3', 'c4', 'c5', 'c6')
     include_names = ('c1', 'c3')
-    data = asciitable.read('t/simple3.txt', names=names, include_names=include_names, delimiter='|', numpy=numpy)
+    data = asciitable.read('t/simple3.txt', names=names, include_names=include_names,
+                           delimiter='|', numpy=numpy)
     assert_equal(data.dtype.names, include_names)
 
 @has_numpy_and_not_has_numpy
@@ -295,6 +279,23 @@ def test_masking_Cds(numpy):
         assert_true(isnan(data['AK'][0]))
         assert_true(not isnan(data['Fit'][0]))
 
+@has_numpy_and_not_has_numpy
+def test_set_guess_kwarg(numpy):
+    """Read a file using guess with one of the typical guess_kwargs explicitly set."""
+    data = asciitable.read('t/space_delim_no_header.dat', numpy=numpy, 
+                           delimiter=',', guess=True)
+    assert(data.dtype.names == ('1 3.4 hello', ))
+    assert(len(data) == 1)
+
+@has_numpy_and_not_has_numpy
+@raises(asciitable.InconsistentTableError)
+def test_read_rdb_wrong_type(numpy):
+    """Read RDB data with inconstent data type (except failure)"""
+    table = """col1\tcol2
+N\tN
+1\tHello"""
+    dat = asciitable.read(table, Reader=asciitable.Rdb)
+
 def get_testfiles(name=None):
     """Set up information about the columns, number of rows, and reader params to
     read a bunch of test files and verify columns and number of rows."""
@@ -435,6 +436,10 @@ def get_testfiles(name=None):
          'name': 't/simple4.txt',
          'nrows': 3,
          'opts': {'Reader': asciitable.NoHeader, 'delimiter': '|'}},
+        {'cols': ('col1', 'col2', 'col3'),
+         'name': 't/space_delim_no_header.dat',
+         'nrows': 2,
+         'opts': {}},
         {'cols': ('obsid', 'offset', 'x', 'y', 'name', 'oaa'),
          'name': 't/space_delim_blank_lines.txt',
          'nrows': 3,

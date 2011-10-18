@@ -13,7 +13,9 @@ built-in `Extension Reader Classes`_:
 * :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
 * :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
 * :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
+* :class:`~asciitable.FixedWidth`: table with fixed-width columns (:ref:`fixed_width_gallery`)
 * :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.Latex`, :class:`~asciitable.AASTex`: LaTeX tables (plain and AASTex)
 * :class:`~asciitable.Memory`: table already in memory (list of lists, dict of lists, etc)
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
@@ -28,8 +30,14 @@ reading or writing a table is largely broken into independent `base class
 elements`_ so that new formats can be accomodated by modifying the underlying
 class methods as needed.
 
-:Copyright: Smithsonian Astrophysical Observatory (2010) 
+:Copyright: Smithsonian Astrophysical Observatory (2011) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   fixed_width_gallery
 
 Requirements
 ---------------
@@ -62,8 +70,8 @@ The latest git repository version is available at `<https://github.com/taldcroft
 Installation and test
 ---------------------
 
-The :mod:`asciitable` package includes a single module that must be made
-available to the Python interpreter.  
+The :mod:`asciitable` package includes a number of component modules that must
+be made available to the Python interpreter.
 
 Easy way
 ^^^^^^^^^^^
@@ -304,7 +312,7 @@ Guess table format
 ^^^^^^^^^^^^^^^^^^^^^^
 If the ``guess`` parameter in |read| is set to True (which is the default) then
 |read| will try to guess the table format by cycling through a number of
-possible table format permuations and attemping to read the table in each case.
+possible table format permutations and attemping to read the table in each case.
 The first format which succeeds and will be used to read the table. To succeed
 the table must be successfully parsed by the Reader and satisfy the following
 column requirements:
@@ -315,7 +323,10 @@ column requirements:
    a vertical bar (|). 
 
 These requirements reduce the chance for a false positive where a table is
-successfully parsed with the wrong format.
+successfully parsed with the wrong format.  A common situation is a table
+with numeric columns but no header row, and in this case ``asciitable`` will
+auto-assign column names because of the restriction on column names that 
+look like a number.
 
 The order of guessing is shown by this Python code::
   
@@ -325,6 +336,10 @@ The order of guessing is shown by this Python code::
       for delimiter in ("|", ",", " ", "\\s"):
           for quotechar in ('"', "'"):
               read(Reader=Reader, delimiter=delimiter, quotechar=quotechar)
+
+Note that the :class:`~asciitable.FixedWidth` derived-readers are not included
+in the default guess sequence (this causes problems), so to read such tables
+one must explicitly specify the reader class with the ``Reader`` keyword.
 
 If none of the guesses succeed in reading the table (subject to the column
 requirements) a final try is made using just the user-supplied parameters but
@@ -793,16 +808,24 @@ general and include a number of configurable attributes.  Others such as
 :class:`Cds` or :class:`Daophot` are specialized to read certain well-defined
 but idiosyncratic formats.
 
+* :class:`~asciitable.AASTex`: AASTeX `deluxetable` used for AAS journals
 * :class:`~asciitable.Basic`: basic table with customizable delimiters and header configurations
 * :class:`~asciitable.Cds`: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
 * :class:`~asciitable.CommentedHeader`: column names given in a line that begins with the comment character
 * :class:`~asciitable.Daophot`: table from the IRAF DAOphot package
+* :class:`~asciitable.FixedWidth`: table with fixed-width columns (see also :ref:`fixed_width_gallery`)
+* :class:`~asciitable.FixedWidthNoHeader`: table with fixed-width columns and no header
+* :class:`~asciitable.FixedWidthTwoLine`: table with fixed-width columns and a two-line header
 * :class:`~asciitable.Ipac`: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* :class:`~asciitable.Latex`: LaTeX table with datavalue in the `tabular` environment
 * :class:`~asciitable.NoHeader`: basic table with no header where columns are auto-named
 * :class:`~asciitable.Rdb`: tab-separated values with an extra line after the column definition line
 * :class:`~asciitable.Tab`: tab-separated values
-* :class:`~asciitable.Latex`: LaTeX table with datavalue in the `tabular` environment
-* :class:`~asciitable.AASTex`: AASTeX `deluxetable` used for AAS journals
+
+.. autoclass:: AASTex
+   :show-inheritance:
+   :members:
+   :undoc-members:
 
 .. autoclass:: Basic
    :show-inheritance:
@@ -824,7 +847,27 @@ but idiosyncratic formats.
    :members:
    :undoc-members:
 
+.. autoclass:: FixedWidth
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: FixedWidthNoHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: FixedWidthTwoLine
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
 .. autoclass:: Ipac
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: Latex
    :show-inheritance:
    :members:
    :undoc-members:
@@ -845,16 +888,6 @@ but idiosyncratic formats.
    :undoc-members:
 
 .. autoclass:: Tab
-   :show-inheritance:
-   :members:
-   :undoc-members:
-
-.. autoclass:: Latex
-   :show-inheritance:
-   :members:
-   :undoc-members:
-
-.. autoclass:: AASTex
    :show-inheritance:
    :members:
    :undoc-members:
@@ -889,6 +922,16 @@ These classes provide support for extension readers.
    :undoc-members:
 
 .. autoclass:: FixedWidthSplitter
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: FixedWidthHeader
+   :show-inheritance:
+   :members:
+   :undoc-members:
+
+.. autoclass:: FixedWidthData
    :show-inheritance:
    :members:
    :undoc-members:

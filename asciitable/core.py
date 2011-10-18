@@ -29,8 +29,6 @@ core.py:
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = '0.7.0'
-
 import os
 import sys
 import re
@@ -61,6 +59,16 @@ try:
     izip = itertools.izip
 except AttributeError:
     izip = zip
+
+try:
+    long = long
+except NameError:
+    long = int
+
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
 
 # Python 2.4 comptability: any() function is built-in only for 2.5 onward
 try:
@@ -106,7 +114,7 @@ class Column(object):
 
     * **name** : column name
     * **index** : column index (first column has index=0, second has index=1, etc)
-    * **type** : column type ('any', 'numeric', 'float', 'int', 'str')
+    * **type** : column type (NoType, StrType, NumType, FloatType, IntType)
     * **str_vals** : list of column values as strings
     * **data** : list of converted column values
     """
@@ -351,6 +359,16 @@ class BaseHeader(object):
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
        
+    def _set_cols_from_names(self):
+        # Filter full list of non-null column names with the include/exclude lists
+        names = set(self.names)
+        if self.include_names is not None:
+            names.intersection_update(self.include_names)
+        if self.exclude_names is not None:
+            names.difference_update(self.exclude_names)
+            
+        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
 
@@ -385,13 +403,7 @@ class BaseHeader(object):
 
             self.names = next(self.splitter([line]))
         
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
+        self._set_cols_from_names()
 
     def process_lines(self, lines):
         """Generator to yield non-comment lines"""
@@ -413,6 +425,22 @@ class BaseHeader(object):
     def colnames(self):
         """Return the column names of the table"""
         return tuple(col.name for col in self.cols)
+
+    def _get_n_data_cols(self):
+        """Return the number of expected data columns from data splitting.
+        This is either explicitly set (typically for fixedwidth splitters)
+        or set to self.names otherwise.
+        """
+        if not hasattr(self, '_n_data_cols'):
+            self._n_data_cols = len(self.names)
+        return self._n_data_cols
+
+    def _set_n_data_cols(self, val):
+        """Return the number of expected data columns from data splitting.
+        """
+        self._n_data_cols = val
+
+    n_data_cols = property(_get_n_data_cols, _set_n_data_cols)
 
     def get_type_map_key(self, col):
         return col.raw_type
@@ -549,7 +577,7 @@ class BaseData(object):
                 formatter = _format_func(formatter)
             col.formatter = formatter
             
-        for vals in itertools.izip(*self.cols):
+        for vals in izip(*self.cols):
             lines.append(self.splitter.join(vals))
 
 def _format_func(format_str):
@@ -643,7 +671,7 @@ def convert_numpy(numpy_type):
         converter_type = IntType
     elif 'float' in type_name:
         converter_type = FloatType
-    elif 'string' in type_name:
+    elif 'str' in type_name:
         converter_type = StrType
     else:
         converter_type = AllType
@@ -763,6 +791,10 @@ class BaseReader(object):
     ``header``, ``data``, ``inputter``, and ``outputter`` attributes.  Each
     of these is an object of the corresponding class.
 
+    There is one method ``inconsistent_handler`` that can be used to customize the
+    behavior of ``read()`` in the event that a data row doesn't match the header.
+    The default behavior is to raise an InconsistentTableError.
+
     """
     def __init__(self):
         self.header = BaseHeader()
@@ -810,17 +842,25 @@ class BaseReader(object):
         self.data.get_data_lines(self.lines)
         self.header.get_cols(self.lines)
         cols = self.header.cols         # header.cols corresponds to *output* columns requested
-        n_data_cols = len(self.header.names) # header.names corresponds to *all* header columns in table
+        n_data_cols = self.header.n_data_cols # number of data cols expected from splitter
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
-            if len(str_vals) != n_data_cols:
-                errmsg = ('Number of header columns (%d) inconsistent with '
-                          'data columns (%d) at data line %d\n'
-                          'Header values: %s\n'
-                          'Data values: %s' % (len(cols), len(str_vals), i,
-                                               [x.name for x in cols], str_vals))
-                raise InconsistentTableError(errmsg)
+            if len(str_vals) != n_data_cols:                
+                str_vals = self.inconsistent_handler(str_vals, n_data_cols)
+                
+                #if str_vals is None, we skip this row
+                if str_vals is None:
+                    continue
+                
+                #otherwise, we raise an error only if it is still inconsistent
+                if len(str_vals) != n_data_cols:
+                    errmsg = ('Number of header columns (%d) inconsistent with '
+                              'data columns (%d) at data line %d\n'
+                              'Header values: %s\n'
+                              'Data values: %s' % (len(cols), len(str_vals), i,
+                                                   [x.name for x in cols], str_vals))
+                    raise InconsistentTableError(errmsg)
 
             for col in cols:
                 col.str_vals.append(str_vals[col.index])
@@ -830,6 +870,26 @@ class BaseReader(object):
         self.cols = self.header.cols
 
         return self.table
+    
+    def inconsistent_handler(self, str_vals, ncols):
+        """Adjust or skip data entries if a row is inconsistent with the header.
+        
+        The default implementation does no adjustment, and hence will always trigger
+        an exception in read() any time the number of data entries does not match 
+        the header.
+        
+        Note that this will *not* be called if the row already matches the header.
+
+        :param str_vals: A list of value strings from the current row of the table.
+        :param ncols: The expected number of entries from the table header.
+        :returns: 
+            list of strings to be parsed into data entries in the output table. If
+            the length of this list does not match ``ncols``, an exception will be
+            raised in read().  Can also be None, in which case the row will be
+            skipped.
+        """
+        #an empty list will always trigger an InconsistentTableError in read()
+        return str_vals
 
     @property
     def comment_lines(self):
@@ -892,31 +952,6 @@ class ContinuationLinesInputter(BaseInputter):
                 parts = []
 
         return outlines
-
-
-class FixedWidthSplitter(BaseSplitter):
-    """Split line based on fixed start and end positions for each ``col`` in
-    ``self.cols``.
-
-    This class requires that the Header class will have defined ``col.start``
-    and ``col.end`` for each column.  The reference to the ``header.cols`` gets
-    put in the splitter object by the base Reader.read() function just in time
-    for splitting data lines by a ``data`` object.  This class won't work for
-    splitting a fixed-width header but generally the header will be used to
-    determine the column start and end positions.
-
-    Note that the ``start`` and ``end`` positions are defined in the pythonic
-    style so line[start:end] is the desired substring for a column.  This splitter
-    class does not have a hook for ``process_lines`` since that is generally not
-    useful for fixed-width input.
-    """
-    def __call__(self, lines):
-        for line in lines:
-            vals = [line[x.start:x.end] for x in self.cols]
-            if self.process_val:
-                yield [self.process_val(x) for x in vals]
-            else:
-                yield vals
 
 
 class WhitespaceSplitter(DefaultSplitter):

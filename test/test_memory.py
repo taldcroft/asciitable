@@ -5,7 +5,7 @@ from nose.tools import *
 import asciitable
 if asciitable.has_numpy:
     import numpy as np
-from test_read import has_numpy_and_not_has_numpy, numpy_cases
+from test.common import has_numpy_and_not_has_numpy
 
 def _test_values_equal(data, mem_data, numpy):
     for colname in data.dtype.names:

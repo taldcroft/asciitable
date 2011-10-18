@@ -8,13 +8,18 @@ git push origin <newbranch>
 
 Test
 ------
+Coverage
+^^^^^^^^^
+(Using Python 2.7 on linux)
+nosetests --with-coverage --cover-package=asciitable --cover-erase --cover-html
 
 Linux
 ^^^^^^
 /usr/bin/nosetests   # Python 2.4 on CentOS-5 system
 set pyroot=$HOME/soft/ActivePython
 $pyroot/2.6/bin/nosetests
-$pyroot/2.7/bin/nosetests
+$pyroot/2.7/bin/nosetests --with-doctest
+$pyroot/2.7_bare/bin/nosetests
 $pyroot/3.2/bin/nosetests
 
 Mac / windows
@@ -27,9 +32,11 @@ git pull
 
 Prepare for release
 --------------------
-- Update __version__ in asciitable.py
-- Update VERSION
+- Update version in asciitable/version.py
 - Update CHANGES
+- Update setup.py
+- Update README.rst
+- Update index.rst
 make doc
 
 Make the source distribution and confirm the correct files
@@ -46,7 +53,7 @@ cd asciitable-*
 
 /usr/bin/nosetests
 
-more asciitable.py   #confirm __version__ !!
+more asciitable/version.py   #confirm __version__ !!
 
 Install new source docs
 ---------------------------------------------
@@ -66,8 +73,10 @@ git remote -v  # check origin
 git push [--dry-run] origin <newbranch>
 
 git checkout master
+git fetch      # make sure nothing happened to master ??
+git merge --no-ff <newbranch> 
 git tag -a <VERSION>
-git merge <newbranch>
+  Include CHANGES
 git push [--dry-run] origin 
 
 Update PyPI
@@ -75,6 +84,13 @@ Update PyPI
 make pypi
 
 - Download tarball and diff against the one in /pool14/aldcroft
+
+Test install on mac:
+
+pip install --upgrade asciitable
+ipython
+import asciitable
+asciitable?
 
 Astrolib SVN
 ------------

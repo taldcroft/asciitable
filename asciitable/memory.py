@@ -113,7 +113,9 @@ class Memory(core.BaseReader):
         if hasattr(table, 'keywords'):
             self.keywords = table.keywords
 
-        self.outputter.default_converters = [((lambda vals: vals), core.AllType)]
+        self.outputter.default_converters = [((lambda vals: vals), core.IntType),
+                                             ((lambda vals: vals), core.FloatType),
+                                             ((lambda vals: vals), core.StrType)]
         self.table = self.outputter(cols)
         self.cols = self.header.cols
 
@@ -160,7 +162,7 @@ class MemoryInputter(core.BaseInputter):
                 # If first_row_or_key is a row (in the case that table is
                 # list-like) then this will raise exception
                 table[first_row_or_key]
-            except (TypeError, IndexError):
+            except (TypeError, IndexError, ValueError):
                 # Table is list-like (python list-of-lists or numpy recarray)
                 lines = table
             else:
@@ -177,6 +179,53 @@ class MemoryInputter(core.BaseInputter):
         # - DictLikeNumpy object
         # - Python list of lists
         return lines
+
+def get_val_type(val):
+    """Get the asciitable data type corresponding to ``val``.  Try a series
+    of possibilities, organized roughly by expected frequencies of types in
+    data tables.
+    """
+    # Try native python types
+    if isinstance(val, float):
+        return core.FloatType
+    elif isinstance(val, int):
+        return core.IntType
+    elif isinstance(val, str):
+        return core.StrType
+    elif isinstance(val, core.long):
+        return core.IntType
+    elif isinstance(val, core.unicode):
+        return core.StrType
+        
+    # Not a native Python type so try a NumPy type
+    try:
+        type_name = val.dtype.name
+    except AttributeError:
+        pass
+    else:
+        if 'int' in type_name:
+            return core.IntType
+        elif 'float' in type_name:
+            return core.FloatType
+        elif 'string' in type_name:
+            return core.StrType
+
+    # Nothing matched
+    raise TypeError("Memory: could not infer type for data value '%s'" % val)
+    
+def get_lowest_type(type_set):
+    """Return the lowest common denominator among a set of asciitable Types,
+    in order StrType, FloatType, IntType.  
+    """
+    if core.StrType in type_set:
+        return core.StrType
+    elif core.FloatType in type_set:
+        return core.FloatType
+    elif core.IntType in type_set:
+        return core.IntType
+
+    raise ValueError("Type_set '%s' does not have expected values" % type_set)
+        
 
 class MemoryHeader(core.BaseHeader):
     """Memory table header reader"""
@@ -204,18 +253,12 @@ class MemoryHeader(core.BaseHeader):
                 try:
                     first_data_vals = next(iter(lines))
                 except StopIteration:
-                    raise core.InconsistentTableError('No data lines found so cannot autogenerate column names')
+                    raise core.InconsistentTableError(
+                        'No data lines found so cannot autogenerate column names')
                 n_data_cols = len(first_data_vals)
                 self.names = [self.auto_format % i for i in range(1, n_data_cols+1)]
 
-        names = set(self.names)
-        if self.include_names is not None:
-            names.intersection_update(self.include_names)
-        if self.exclude_names is not None:
-            names.difference_update(self.exclude_names)
-            
-        self.cols = [core.Column(name=x, index=i) for i, x in enumerate(self.names)
-                     if x in names]
+        self._set_cols_from_names()
 
         # ``lines`` could be one of: NumPy recarray, DictLikeNumpy obj, Python
         # list of lists. If NumPy recarray then set col.type accordingly.  In
@@ -228,17 +271,20 @@ class MemoryHeader(core.BaseHeader):
                     col.type = core.IntType
                 elif 'float' in type_name:
                     col.type = core.FloatType
-                elif 'string' in type_name:
+                elif 'str' in type_name:
                     col.type = core.StrType
         else:
-            basic_reader = core._get_reader(Reader=basic.BasicReader,
-                                            names=[col.name for col in self.cols], quotechar="'")
-            data_in = tuple(' '.join(repr(vals[col.index]) for col in self.cols)
-                            for vals in lines)
-            data_out = basic_reader.read(data_in)
-            for col, data_col in zip(self.cols, basic_reader.cols):
-                col.type = data_col.type
-
+            # lines is a list of lists or DictLikeNumpy.  
+            col_types = {}
+            col_indexes = [col.index for col in self.cols]
+            for vals in lines:
+                for col_index in col_indexes:
+                    val = vals[col_index]
+                    col_type_set = col_types.setdefault(col_index, set())
+                    col_type_set.add(get_val_type(val))
+            for col in self.cols:
+                col.type = get_lowest_type(col_types[col.index])
+            
 
 class MemorySplitter(core.BaseSplitter):
     """Splitter for data already in memory.  It is assumed that ``lines`` are

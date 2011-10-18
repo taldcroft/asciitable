@@ -32,7 +32,9 @@ ui.py:
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import re
 import os
+import sys
 
 import asciitable.core as core
 import asciitable.basic as basic
@@ -147,15 +149,26 @@ def _guess(table, read_kwargs):
     call make sure that if there is a corresponding definition in the guess
     then it must have the same val.  If not then skip this guess."""
 
+    # Keep a trace of all failed guesses kwarg
+    failed_kwargs = []
+
     # First try guessing
     for guess_kwargs in [read_kwargs.copy()] + _get_guess_kwargs_list():
+        guess_kwargs_ok = True  # guess_kwargs are consistent with user_kwargs?
         for key, val in read_kwargs.items():
             # Do guess_kwargs.update(read_kwargs) except that if guess_args has
             # a conflicting key/val pair then skip this guess entirely.
             if key not in guess_kwargs:
                 guess_kwargs[key] = val
             elif val != guess_kwargs[key]:
-                continue
+                guess_kwargs_ok = False
+                break
+
+        if not guess_kwargs_ok:
+            # User-supplied kwarg is inconsistent with the guess-supplied kwarg, e.g.
+            # user supplies delimiter="|" but the guess wants to try delimiter=" ", 
+            # so skip the guess entirely.
+            continue
 
         try:
             reader = get_reader(**guess_kwargs)
@@ -170,6 +183,7 @@ def _guess(table, read_kwargs):
                 raise ValueError
             return dat
         except (core.InconsistentTableError, ValueError, TypeError):
+            failed_kwargs.append(guess_kwargs)
             pass
     else:
         # failed all guesses, try the original read_kwargs without column requirements
@@ -177,7 +191,18 @@ def _guess(table, read_kwargs):
             reader = get_reader(**read_kwargs)
             return reader.read(table)
         except (core.InconsistentTableError, ValueError):
-            raise core.InconsistentTableError('Unable to read table with guess=True.')
+            failed_kwargs.append(read_kwargs)
+            lines = ['\nERROR: Unable to guess table for with the guesses listed below:']
+            for kwargs in failed_kwargs:
+                sorted_keys = sorted([x for x in sorted(kwargs) if x not in ('Reader', 'Outputter')])
+                reader_repr = repr(kwargs.get('Reader', basic.Basic))
+                keys_vals = ['Reader:' + re.search(r"\.(\w+)'>", reader_repr).group(1)]
+                kwargs_sorted = ((key, kwargs[key]) for key in sorted_keys)
+                keys_vals.extend(['%s: %s' % (key, repr(val)) for key, val in kwargs_sorted])
+                lines.append(' '.join(keys_vals))
+            lines.append('ERROR: Unable to guess table for with the guesses listed above.')
+            lines.append('Check the table and try with guess=False and appropriate arguments to read()')
+            raise core.InconsistentTableError('\n'.join(lines))
     
 def _get_guess_kwargs_list():
     guess_kwargs_list = [dict(Reader=basic.Rdb),
@@ -216,12 +241,12 @@ def get_writer(Writer=None, **kwargs):
     writer = core._get_writer(Writer, **kwargs)
     return writer
 
-def write(table, output,  Writer=None, **kwargs):
+def write(table, output=sys.stdout,  Writer=None, **kwargs):
     """Write the input ``table`` to ``filename``.  Most of the default behavior
     for various parameters is determined by the Writer class.
 
     :param table: input table (Reader object, NumPy struct array, list of lists, etc)
-    :param output: output (filename, file-like object)
+    :param output: output [filename, file-like object] (default = sys.stdout)
     :param Writer: Writer class (default= :class:`~asciitable.Basic` )
     :param delimiter: column delimiter string
     :param write_comment: string defining a comment line in table

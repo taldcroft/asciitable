@@ -9,7 +9,9 @@ Extension Reader Classes:
 * **Cds**: `CDS format table <http://vizier.u-strasbg.fr/doc/catstd.htx>`_ (also Vizier and ApJ machine readable tables)
 * **CommentedHeader**: column names given in a line that begins with the comment character
 * **Daophot**: table from the IRAF DAOphot package
+* **FixedWidth**: table with fixed-width columns
 * **Ipac**: `IPAC format table <http://irsa.ipac.caltech.edu/applications/DDGEN/Doc/ipac_tbl.html>`_
+* **Latex**: LaTeX tables (plain and AASTex)
 * **Memory**: table already in memory (list of lists, dict of lists, etc)
 * **NoHeader**: basic table with no header where columns are auto-named
 * **Rdb**: tab-separated values with a column types line after the column names line
@@ -25,7 +27,7 @@ elements so that new formats can be accomodated by modifying the underlying
 class methods as needed.
 """
 
-version = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
+from asciitable.version import version
 
 setup(name='asciitable',
       version=version,
@@ -37,13 +39,14 @@ setup(name='asciitable',
       license='BSD',
       platforms=['any'],
       classifiers=[
-          'Development Status :: 4 - Beta',
+          'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: BSD License',
+          'Topic :: Scientific/Engineering',
           'Topic :: Scientific/Engineering :: Astronomy',
           'Topic :: Scientific/Engineering :: Physics',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 3',
           ],
-      py_modules=['asciitable'],
+      packages=['asciitable'],
       )
