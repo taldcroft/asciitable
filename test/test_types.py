@@ -2,7 +2,6 @@ import re
 import sys
 import glob
 import math
-from nose.tools import *
 
 try:
     import StringIO as io
@@ -13,7 +12,7 @@ import asciitable
 if asciitable.has_numpy:
     import numpy as np
 
-from test.common import has_numpy_and_not_has_numpy, has_numpy
+from .common import *
 
 @has_numpy_and_not_has_numpy
 def test_types_from_dat(numpy):

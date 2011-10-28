@@ -1,6 +1,6 @@
 # run from main directory; not from test/
 import asciitable
-from nose.tools import *
+from .common import *
 
 try:
     from math import isnan

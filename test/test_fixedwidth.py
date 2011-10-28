@@ -1,13 +1,12 @@
 import re
 import glob
-from nose.tools import *
 
 import asciitable
 if asciitable.has_numpy:
     import numpy as np
 from asciitable.core import io
 
-from test.common import has_numpy_and_not_has_numpy, has_numpy
+from .common import *
 
 def assert_equal_splitlines(arg1, arg2):
     assert_equal(arg1.splitlines(), arg2.splitlines())
