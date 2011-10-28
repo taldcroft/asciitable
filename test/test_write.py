@@ -1,10 +1,14 @@
 import sys
-import asciitable
 
 try:
     import StringIO as io
 except ImportError:
     import io
+
+try:
+    from .. import ascii as asciitable
+except ValueError:
+    import asciitable
 
 from .common import *
 

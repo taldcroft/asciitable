@@ -1,5 +1,8 @@
 import os
-import asciitable
+try:
+    from .. import ascii as asciitable
+except ValueError:
+    import asciitable
 
 if asciitable.has_numpy:
     numpy_cases = (True, False)

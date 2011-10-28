@@ -1,10 +1,14 @@
 import re
 import glob
 
-import asciitable
+try:
+    from .. import ascii as asciitable
+except ValueError:
+    import asciitable
+io = asciitable.core.io
+
 if asciitable.has_numpy:
     import numpy as np
-from asciitable.core import io
 
 from .common import *
 

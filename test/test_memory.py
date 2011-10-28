@@ -1,7 +1,11 @@
 import re
 import glob
 
-import asciitable
+try:
+    from .. import ascii as asciitable
+except ValueError:
+    import asciitable
+
 if asciitable.has_numpy:
     import numpy as np
 
