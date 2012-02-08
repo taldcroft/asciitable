@@ -41,6 +41,20 @@ try:
 except ImportError:
     has_numpy = False
 
+try:
+    from ...table import Table
+    is_astropy = True
+    has_table = True
+except ValueError:
+    is_astropy = False
+    
+if not is_astropy:
+    try:
+        from astropy.table import Table
+        has_table = True
+    except ImportError:
+        has_table = False
+
 class InconsistentTableError(ValueError):
     pass
 
@@ -783,6 +797,28 @@ class NumpyOutputter(BaseOutputter):
             return recarr
 
 
+class TableOutputter(BaseOutputter):
+    """Output the table as an astropy.table.Table object.
+
+    Missing or bad data values are not presently handled and raise an
+    exception.  This will be changed, but in the meantime use the
+    NumpyOutputter.
+    """
+
+    default_converters = [convert_numpy(numpy.int),
+                          convert_numpy(numpy.float),
+                          convert_numpy(numpy.str)]
+
+    def __call__(self, cols):
+        if not has_table:
+            raise ValueError('TableOutputter requires astropy')
+        
+        self._convert_vals(cols)
+        out = Table([x.data for x in cols], names=[x.name for x in cols])
+        # To Do: add support for column and table metadata
+        return out
+
+
 class BaseReader(object):
     """Class providing methods to read an ASCII table using the specified
     header, data, inputter, and outputter instances.
@@ -991,7 +1027,10 @@ def _get_reader(Reader, Inputter=None, Outputter=None, numpy=True, **kwargs):
         reader.inputter = Inputter()
 
     if has_numpy and numpy:
-        reader.outputter = NumpyOutputter()
+        if is_astropy:
+            reader.outputter = TableOutputter()
+        else:
+            reader.outputter = NumpyOutputter()
 
     if Outputter is not None:
         reader.outputter = Outputter()
