@@ -1,0 +1,11 @@
+rsync --dry-run --size-only --exclude NOTES.rsync --exclude version.py \
+    --exclude build -av --exclude '*.pyc' \
+    --exclude __pycache__ --cvs-exclude \
+    ~/git/asciitable/asciitable/ ~/git/astropy/astropy/io/ascii/
+
+rsync --dry-run --size-only --exclude build -av --exclude '*.pyc' --exclude __pycache__ --cvs-exclude \
+    ~/git/astropy/astropy/io/ascii/ ~/git/asciitable/asciitable/
+
+# Only works one way from asciitable to io.ascii
+rsync --dry-run -av --size-only ~/git/asciitable/doc/.astropy/*.rst ~/git/astropy/docs/ascii/
+

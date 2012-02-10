@@ -55,7 +55,7 @@ this is the top priority for development.
 
 
 Data from asciitable.read()
-+++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++
 
 :mod:`Asciitable.read` returns a data object that can be an input to the
 |write| function.  If NumPy is available the default data

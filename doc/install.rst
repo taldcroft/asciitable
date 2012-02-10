@@ -1,13 +1,17 @@
+Installation
+=============
+
 Requirements
 ---------------
-* :mod:`asciitable` passes its nosetests for the following platform / Python
-  version combinations.  Other combinations may work but have not been
-  tried. 
+
+* :mod:`asciitable` package requires Python 2.5 or newer.  It has been tested
+  for the following platform / Python version combinations.  Other combinations
+  may work but have not been tried.
 
 =========== ===================
 OS          Python version
 =========== ===================
-Linux       2.4, 2.6, 2.7, 3.2
+Linux       2.5, 2.6, 2.7, 3.2
 MacOS 10.6  2.7
 Windows XP  2.7
 =========== ===================
@@ -26,7 +30,7 @@ The latest git repository version is available at `<https://github.com/taldcroft
 
   git clone git://github.com/taldcroft/asciitable.git
 
-Installation and test
+Install and test
 ---------------------
 
 The :mod:`asciitable` package includes a number of component modules that must

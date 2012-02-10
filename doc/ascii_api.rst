@@ -1,7 +1,7 @@
 .. include:: references.txt
 
 Asciitable API
-==============
+===========================
 
 .. automodule:: asciitable
 
