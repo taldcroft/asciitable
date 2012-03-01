@@ -14,11 +14,71 @@ Input data formats
 ^^^^^^^^^^^^^^^^^^^
 A number of data formats for the input table are supported:
 
-- `Existing ASCII table with metadata`_ (:class:`~asciitable.BaseReader` object)
-- `Data from asciitable.read()`_ (:class:`~asciitable.DictLikeNumpy` object)
+- `Dict of sequences`_ (column oriented dictionary of lists)
 - `NumPy structured array`_ or record array
 - `Sequence of sequences`_ (row-oriented list of lists)
-- `Dict of sequences`_ (column oriented dictionary of lists)
+- `Data from asciitable.read()`_ (:class:`~asciitable.DictLikeNumpy` object)
+- `Existing ASCII table with metadata`_ (:class:`~asciitable.BaseReader` object)
+
+Dict of sequences
++++++++++++++++++++++++
+
+A dictionary containing iterable objects can serve as input to |write|.  Each
+dict key is taken as the column name while the value must be an iterable object
+containing the corresponding column values.  The ``names`` keyword argument
+is needed if you want a certain column order, otherwise it will be alphabetical
+by default.
+
+::
+
+    data = {'x': [1, 2, 3], 
+            'y': [4, 5.2, 6.1], 
+            'z': [8, 9, 'hello world']}
+    asciitable.write(data, 'table.dat', names=['x', 'y', 'z'])
+
+NumPy structured array
+++++++++++++++++++++++++
+
+A NumPy `structured array`_ (aka record array) can serve as input to the |write| function.
+
+::
+
+    data = numpy.zeros((2,), dtype=('i4,f4,a10'))
+    data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
+    asciitable.write(data, sys.stdout)
+
+Sequence of sequences
++++++++++++++++++++++++++
+
+A doubly-nested structure of iterable objects (e.g. lists or tuples) can serve as input to |write|.  
+The outer layer represents rows while the inner layer represents columns.
+
+::
+
+    data = [[1, 2,   3      ], 
+            [4, 5.2, 6.1    ], 
+            [8, 9,   'hello']]
+    asciitable.write(data, 'table.dat')
+    asciitable.write(data, 'table.dat', names=['x', 'y', 'z'], exclude_names=['y'])
+
+
+Data from asciitable.read()
+++++++++++++++++++++++++++++++++++++++++++++
+
+:mod:`Asciitable.read` returns a data object that can be an input to the
+|write| function.  If NumPy is available the default data
+object type is a NumPy record array.  However it is possible to use
+:mod:`asciitable` without NumPy in which case a :class:`~asciitable.DictLikeNumpy` 
+object is returned.  This object supports the most basic column and row indexing 
+API of a NumPy `structured array`_.  This object can be used as input to the |write| 
+function.
+
+::
+
+    table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
+    data = table.read('t/daophot.dat')
+
+    asciitable.write(data, sys.stdout)
 
 Existing ASCII table with metadata
 +++++++++++++++++++++++++++++++++++
@@ -52,66 +112,6 @@ this is the top priority for development.
     asciitable.write(table, sys.stdout, formats={'XCENTER': '%12.1f',
                                                  'YCENTER': lambda x: round(x, 1)},
                                         include_names=['XCENTER', 'YCENTER'])
-
-
-Data from asciitable.read()
-++++++++++++++++++++++++++++++++++++++++++++
-
-:mod:`Asciitable.read` returns a data object that can be an input to the
-|write| function.  If NumPy is available the default data
-object type is a NumPy record array.  However it is possible to use
-:mod:`asciitable` without NumPy in which case a :class:`~asciitable.DictLikeNumpy` 
-object is returned.  This object supports the most basic column and row indexing 
-API of a NumPy `structured array`_.  This object can be used as input to the |write| 
-function.
-
-::
-
-    table = asciitable.get_reader(Reader=asciitable.Daophot, numpy=False)
-    data = table.read('t/daophot.dat')
-
-    asciitable.write(data, sys.stdout)
-
-NumPy structured array
-++++++++++++++++++++++++
-
-A NumPy `structured array`_ (aka record array) can serve as input to the |write| function.
-
-::
-
-    data = numpy.zeros((2,), dtype=('i4,f4,a10'))
-    data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
-    asciitable.write(data, sys.stdout)
-
-Sequence of sequences
-+++++++++++++++++++++++++
-
-A doubly-nested structure of iterable objects (e.g. lists or tuples) can serve as input to |write|.  
-The outer layer represents rows while the inner layer represents columns.
-
-::
-
-    data = [[1, 2,   3      ], 
-            [4, 5.2, 6.1    ], 
-            [8, 9,   'hello']]
-    asciitable.write(data, 'table.dat')
-    asciitable.write(data, 'table.dat', names=['x', 'y', 'z'], exclude_names=['y'])
-
-Dict of sequences
-+++++++++++++++++++++++
-
-A dictionary containing iterable objects can serve as input to |write|.  Each
-dict key is taken as the column name while the value must be an iterable object
-containing the corresponding column values.  Note the difference in output between
-this example and the previous example.
-
-::
-
-    data = {'x': [1, 2, 3], 
-            'y': [4, 5.2, 6.1], 
-            'z': [8, 9, 'hello world']}
-    asciitable.write(data, 'table.dat')
-
 
 Commonly used parameters for ``write()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
