@@ -504,6 +504,12 @@ Writing tables
 object using the same class structure and basic user interface as for reading
 tables.  
 
+As a very simple example::
+
+  x = np.array([1, 2, 3])
+  y = x**2
+  asciitable.write({'x': x, 'y': y}, 'outfile.dat', names=['x', 'y'])
+
 
 Input data formats
 ^^^^^^^^^^^^^^^^^^^
