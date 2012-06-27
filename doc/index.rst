@@ -605,8 +605,10 @@ this example and the previous example.
     data = {'x': [1, 2, 3], 
             'y': [4, 5.2, 6.1], 
             'z': [8, 9, 'hello world']}
-    asciitable.write(data, 'table.dat')
+    asciitable.write(data, 'table.dat', names=['x', 'y', 'z'])
 
+Specifying the ``names`` argument is necessary if the order of the columns
+matters.  The specified values must match the keys in the ``data`` dict.
 
 Commonly used parameters for ``write()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -664,8 +666,9 @@ of these classes for details.
 
 **names**: list of names corresponding to each data column
   Define the complete list of names for each data column.  This will override
-  names determined from the data table (if available).  If not supplied then
-  use names from the data table or auto-generated names.
+  names determined from the data table (if available), except in the case of
+  input as a `Dict of sequences`_ where it specifies the *order* columns.  If not
+  supplied then use names from the data table or auto-generated names.
 
 **include_names**: list of names to include in output
   From the list of column names found from the data table or the ``names``
