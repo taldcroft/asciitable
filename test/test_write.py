@@ -111,6 +111,7 @@ preamble
 \\begin{tabular}{col_align}
 header_start
 ID & XCENTER & YCENTER & MAG & MERR & MSKY & NITER & SHARPNESS & CHI & PIER & PERROR \\\\
+  &   &   &   &   &   &   &   &   &   &   \\\\
 header_end
 data_start
 14 & 138.538 & 256.405 & 15.461 & 0.003 & 34.85955 & 4 & -0.032 & 0.802 & 0 & No_error \\\\
