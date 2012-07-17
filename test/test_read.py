@@ -155,7 +155,7 @@ def test_custom_splitters(numpy):
     assert_almost_equal(data.field('p1.ampl')[2], 0.000696444029148)
     assert_equal(data.field('statname')[2], 'chi2modvar')
     assert_almost_equal(data.field('statval')[2], 497.56468441)
-    
+
 @has_numpy_and_not_has_numpy
 def test_start_end(numpy):
     data = asciitable.read('t/test5.dat', header_start=1, data_start=3, data_end=-5, numpy=numpy)
@@ -172,7 +172,7 @@ def test_set_converters(numpy):
     data = asciitable.read('t/test4.dat', converters=converters, numpy=numpy)
     assert_equal(str(data['zabs1.nh'].dtype), 'float32')
     assert_equal(data['p1.gamma'][0], '1.26764544642')
-    
+
 @has_numpy_and_not_has_numpy
 def test_from_string(numpy):
     f = 't/simple.txt'
@@ -181,7 +181,7 @@ def test_from_string(numpy):
     data = asciitable.read(table, numpy=numpy, **testfile['opts'])
     assert_equal(data.dtype.names, testfile['cols'])
     assert_equal(len(data), testfile['nrows'])
-    
+
 @has_numpy_and_not_has_numpy
 def test_from_filelike(numpy):
     f = 't/simple.txt'
@@ -190,7 +190,7 @@ def test_from_filelike(numpy):
     data = asciitable.read(table, numpy=numpy, **testfile['opts'])
     assert_equal(data.dtype.names, testfile['cols'])
     assert_equal(len(data), testfile['nrows'])
-    
+
 @has_numpy_and_not_has_numpy
 def test_from_lines(numpy):
     f = 't/simple.txt'
@@ -199,7 +199,7 @@ def test_from_lines(numpy):
     data = asciitable.read(table, numpy=numpy, **testfile['opts'])
     assert_equal(data.dtype.names, testfile['cols'])
     assert_equal(len(data), testfile['nrows'])
-    
+
 @has_numpy_and_not_has_numpy
 def test_comment_lines(numpy):
     table = asciitable.get_reader(Reader=asciitable.RdbReader, numpy=numpy)
@@ -216,11 +216,11 @@ def test_fill_values(numpy):
         assert_true((data.data['a']==[1,1]).all())
         assert_true((data.mask['b']==[False,True]).all())
         assert_true((data.data['b']==[2,1]).all())
-        
+
     else:
         assert_equal(data['a'],[1,1])
         assert_equal(data['b'],[2,1])
-        
+
 @has_numpy_and_not_has_numpy
 def test_fill_values_col(numpy):
     f = 't/fill_values.txt'
@@ -235,7 +235,7 @@ def test_fill_values_include_names(numpy):
     data = asciitable.read(f, numpy=numpy, fill_values=('a','1'),
                            fill_include_names = ['b'], **testfile['opts'])
     check_fill_values(numpy, data)
-        
+
 @has_numpy_and_not_has_numpy
 def test_fill_values_exclude_names(numpy):
     f = 't/fill_values.txt'
@@ -250,7 +250,7 @@ def check_fill_values(numpy, data):
         assert_true((data.mask['a']==[False,False]).all())
         assert_true((data.data['a']==['1','a']).all())
         assert_true((data.mask['b']==[False,True]).all())
-        assert_true((data.data['b']==[2,1]).all())        
+        assert_true((data.data['b']==[2,1]).all())
     else:
         assert_equal(data['a'],['1','a'])
         assert_equal(data['b'],[2,1])
@@ -270,7 +270,7 @@ def test_fill_values_list(numpy):
 def test_masking_Cds(numpy):
     f = 't/cds.dat'
     testfile = get_testfiles(f)
-    data = asciitable.read(f, numpy=numpy, 
+    data = asciitable.read(f, numpy=numpy,
                            **testfile['opts'])
     if numpy:
         assert_true(data['AK'].mask[0])
@@ -282,7 +282,7 @@ def test_masking_Cds(numpy):
 @has_numpy_and_not_has_numpy
 def test_set_guess_kwarg(numpy):
     """Read a file using guess with one of the typical guess_kwargs explicitly set."""
-    data = asciitable.read('t/space_delim_no_header.dat', numpy=numpy, 
+    data = asciitable.read('t/space_delim_no_header.dat', numpy=numpy,
                            delimiter=',', guess=True)
     assert(data.dtype.names == ('1 3.4 hello', ))
     assert(len(data) == 1)
@@ -328,6 +328,10 @@ def get_testfiles(name=None):
          'name': 't/commented_header.dat',
          'nrows': 2,
          'opts': {'Reader': asciitable.CommentedHeader}},
+        {'cols': ('a', 'b', 'c'),
+         'name': 't/commented_header2.dat',
+         'nrows': 2,
+         'opts': {'Reader': asciitable.CommentedHeader, 'header_start': -1}},
         {'cols': ('col1', 'col2', 'col3', 'col4', 'col5'),
          'name': 't/continuation.dat',
          'nrows': 2,
@@ -470,4 +474,3 @@ def get_testfiles(name=None):
         return [x for x in testfiles if x['name'] == name][0]
     else:
         return testfiles
-    
