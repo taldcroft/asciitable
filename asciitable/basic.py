@@ -8,7 +8,7 @@ basic.py:
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
 """
 
-## 
+##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions are met:
 ##     * Redistributions of source code must retain the above copyright
@@ -19,7 +19,7 @@ basic.py:
 ##     * Neither the name of the Smithsonian Astrophysical Observatory nor the
 ##       names of its contributors may be used to endorse or promote products
 ##       derived from this software without specific prior written permission.
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ## ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 ## WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -28,7 +28,7 @@ basic.py:
 ## (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 ## LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ## ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
+## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
@@ -52,7 +52,7 @@ class Basic(core.BaseReader):
         rdr.data.comment = r'\s*#'
 
     Example table::
-    
+
       # Column definition is the first uncommented line
       # Default delimiter is the space character.
       apples oranges pears
@@ -107,8 +107,11 @@ class CommentedHeaderHeader(core.BaseHeader):
         lines.append(self.write_comment + self.splitter.join([x.name for x in self.cols]))
 
 class CommentedHeader(core.BaseReader):
-    """Read a file where the column names are given in a line that begins with the
-    header comment character.  The default delimiter is the <space> character.::
+    """Read a file where the column names are given in a line that begins with
+    the header comment character. `header_start` can be used to specify the
+    line index of column names, and it can be a negative index (for example -1
+    for the last commented line).  The default delimiter is the <space>
+    character.::
 
       # col1 col2 col3
       # Comment line
@@ -132,7 +135,7 @@ class CommentedHeader(core.BaseReader):
 CommentedHeaderReader = CommentedHeader
 
 class Tab(BasicReader):
-    """Read a tab-separated file.  Unlike the :class:`Basic` reader, whitespace is 
+    """Read a tab-separated file.  Unlike the :class:`Basic` reader, whitespace is
     not stripped from the beginning and end of lines.  By default whitespace is
     still stripped from the beginning and end of individual column values.
 
@@ -147,7 +150,7 @@ class Tab(BasicReader):
         self.header.splitter.delimiter = '\t'
         self.data.splitter.delimiter = '\t'
         # Don't strip line whitespace since that includes tabs
-        self.header.splitter.process_line = None  
+        self.header.splitter.process_line = None
         self.data.splitter.process_line = None
         # Don't strip data value whitespace since that is significant in TSV tables
         self.data.splitter.process_val = None
@@ -188,7 +191,7 @@ class RdbHeader(core.BaseHeader):
 
     def get_cols(self, lines):
         """Initialize the header Column objects from the table ``lines``.
-        
+
         This is a specialized get_cols for the RDB type:
         Line 0: RDB col names
         Line 1: RDB col definitions
@@ -205,10 +208,10 @@ class RdbHeader(core.BaseHeader):
 
         if len(self.names) != len(raw_types):
             raise ValueError('RDB header mismatch between number of column names and column types')
-        
+
         if any(not re.match(r'\d*(N|S)$', x, re.IGNORECASE) for x in raw_types):
             raise ValueError('RDB types definitions do not all match [num](N|S): %s' % raw_types)
-        
+
         self._set_cols_from_names()
         for col, raw_type in zip(self.cols, raw_types):
             col.raw_type = raw_type
@@ -223,4 +226,3 @@ class RdbHeader(core.BaseHeader):
             else:
                 rdb_types.append('S')
         lines.append(self.splitter.join(rdb_types))
-

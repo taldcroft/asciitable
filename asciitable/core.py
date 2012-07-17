@@ -6,7 +6,7 @@ core.py:
 :Copyright: Smithsonian Astrophysical Observatory (2010)
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
 """
-## 
+##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions are met:
 ##     * Redistributions of source code must retain the above copyright
@@ -17,7 +17,7 @@ core.py:
 ##     * Neither the name of the Smithsonian Astrophysical Observatory nor the
 ##       names of its contributors may be used to endorse or promote products
 ##       derived from this software without specific prior written permission.
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ## ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 ## WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -26,7 +26,7 @@ core.py:
 ## (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 ## LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ## ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS  
+## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 ## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
@@ -125,10 +125,10 @@ class Column(object):
         self.str_vals = []
         self.fill_values = {}
         self.formatter = None
-    
+
     def __iter__(self):
         '''iterate over formated column values
-        
+
         Each value is paased through self.formatter.
         If str(self.formatter(value)) is found in the fill_values specification,
         the corresponding fill_value is returned, otherwise the formated value.
@@ -146,7 +146,7 @@ class BaseInputter(object):
     """
     def get_lines(self, table):
         """Get the lines from the ``table`` input.
-        
+
         :param table: table input
         :returns: list of lines
         """
@@ -196,11 +196,11 @@ class BaseSplitter(object):
 
       reader.header.splitter.process_val = lambda x: x.lstrip()
       reader.data.splitter.process_val = None
-      
-    :param delimiter: one-character string used to separate fields 
+
+    :param delimiter: one-character string used to separate fields
     """
     delimiter = None
-    
+
     def process_line(self, line):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
         whitespace-delimited files to prevent spurious columns at the beginning or end."""
@@ -226,7 +226,7 @@ class BaseSplitter(object):
         else:
             delimiter = self.delimiter
         return delimiter.join(str(x) for x in vals)
-    
+
 
 class DefaultSplitter(BaseSplitter):
     """Default class to split strings into columns using python csv.  The class
@@ -253,10 +253,10 @@ class DefaultSplitter(BaseSplitter):
     escapechar = None
     quoting = csv.QUOTE_MINIMAL
     skipinitialspace = True
-    
+
     def process_line(self, line):
         """Remove whitespace at the beginning or end of line.  This is especially useful for
-        whitespace-delimited files to prevent spurious columns at the beginning or end. 
+        whitespace-delimited files to prevent spurious columns at the beginning or end.
         If splitting on whitespace then replace unquoted tabs with space first"""
         if self.delimiter == '\s':
             line = _replace_tab_with_space(line, self.escapechar, self.quotechar)
@@ -294,7 +294,7 @@ class DefaultSplitter(BaseSplitter):
                 yield [self.process_val(x) for x in vals]
             else:
                 yield vals
-            
+
     def join(self, vals):
         if self.delimiter is None:
             delimiter = ' '
@@ -312,10 +312,10 @@ class DefaultSplitter(BaseSplitter):
                                          )
         self.csv_writer_out.seek(0)
         self.csv_writer_out.truncate()
-        self.csv_writer.writerow(vals)        
+        self.csv_writer.writerow(vals)
 
         return self.csv_writer_out.getvalue()
-    
+
 def _replace_tab_with_space(line, escapechar, quotechar):
     """Replace tab with space within ``line`` while respecting quoted substrings"""
     newline = []
@@ -331,10 +331,21 @@ def _replace_tab_with_space(line, escapechar, quotechar):
     return ''.join(newline)
 
 def _get_line_index(line_or_func, lines):
+    """Return the appropriate line index, depending on ``line_or_func`` which
+    can be either a function, a positive or negative int, or None.
+    """
+
     if hasattr(line_or_func, '__call__'):
         return line_or_func(lines)
+    elif line_or_func:
+        if line_or_func >= 0:
+            return line_or_func
+        else:
+            n_lines = sum(1 for line in lines)
+            return n_lines + line_or_func
     else:
         return line_or_func
+
 
 class BaseHeader(object):
     """Base table header reader
@@ -358,7 +369,7 @@ class BaseHeader(object):
 
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
-       
+
     def _set_cols_from_names(self):
         # Filter full list of non-null column names with the include/exclude lists
         names = set(self.names)
@@ -366,7 +377,7 @@ class BaseHeader(object):
             names.intersection_update(self.include_names)
         if self.exclude_names is not None:
             names.difference_update(self.exclude_names)
-            
+
         self.cols = [Column(name=x, index=i) for i, x in enumerate(self.names) if x in names]
 
     def get_cols(self, lines):
@@ -402,7 +413,7 @@ class BaseHeader(object):
                 raise ValueError('No header line found in table')
 
             self.names = next(self.splitter([line]))
-        
+
         self._set_cols_from_names()
 
     def process_lines(self, lines):
@@ -472,7 +483,7 @@ class BaseData(object):
     fill_values = []
     fill_include_names = None
     fill_exclude_names = None
-    
+
     def __init__(self):
         self.splitter = self.__class__.splitter_class()
 
@@ -508,7 +519,7 @@ class BaseData(object):
 
     def masks(self, cols):
         """Set fill value for each column and then apply that fill value
-        
+
         In the first step it is evaluated with value from ``fill_values`` applies to
         which column using ``fill_include_names`` and ``fill_exclude_names``.
         In the second step all replacements are done for the appropriate columns.
@@ -516,7 +527,7 @@ class BaseData(object):
         if self.fill_values:
             self._set_fill_values(cols)
             self._set_masks(cols)
-    
+
     def _set_fill_values(self, cols):
         """Set the fill values of the individual cols based on fill_values of BaseData
 
@@ -529,7 +540,7 @@ class BaseData(object):
             #if input is only one <fill_spec>, then make it a list
             try:
                 self.fill_values[0] + ''
-                self.fill_values = [ self.fill_values ] 
+                self.fill_values = [ self.fill_values ]
             except TypeError:
                 pass
             # Step 1: Set the default list of columns which are affected by fill_values
@@ -538,7 +549,7 @@ class BaseData(object):
                 colnames.intersection_update(self.fill_include_names)
             if self.fill_exclude_names is not None:
                 colnames.difference_update(self.fill_exclude_names)
-        
+
             # Step 2a: Find out which columns are affected by this tuple
             # iterate over reversed order, so last condition is set first and overwritten by earlier conditions
             for replacement in reversed(self.fill_values):
@@ -548,7 +559,7 @@ class BaseData(object):
                     affect_cols = colnames
                 else:
                     affect_cols = replacement[2:]
-                
+
                 for i, key in ((i, x) for i, x in enumerate(self.header.colnames) if x in affect_cols):
                     cols[i].fill_values[replacement[0]] = str(replacement[1])
 
@@ -576,7 +587,7 @@ class BaseData(object):
             if not hasattr(formatter, '__call__'):
                 formatter = _format_func(formatter)
             col.formatter = formatter
-            
+
         for vals in izip(*self.cols):
             lines.append(self.splitter.join(vals))
 
@@ -589,7 +600,7 @@ def _format_func(format_str):
 class DictLikeNumpy(dict):
     """Provide minimal compatibility with numpy rec array API for BaseOutputter
     object::
-      
+
       table = asciitable.read('mytable.dat', numpy=False)
       table.field('x')    # List of elements in column 'x'
       table.dtype.names   # get column names in order
@@ -637,7 +648,7 @@ class DictLikeNumpy(dict):
 
     def next(self):
         return self.__next__()
-        
+
 def convert_list(python_type):
     """Return a tuple ``(converter_func, converter_type)``.  The converter
     function converts a list into a list of the given ``python_type``.  This
@@ -665,7 +676,7 @@ def convert_numpy(numpy_type):
     float, str) that is produced by the converter function.
     """
 
-    # Infer converter type from an instance of numpy_type. 
+    # Infer converter type from an instance of numpy_type.
     type_name = numpy.array([], dtype=numpy_type).dtype.name
     if 'int' in type_name:
         converter_type = IntType
@@ -675,7 +686,7 @@ def convert_numpy(numpy_type):
         converter_type = StrType
     else:
         converter_type = AllType
-    
+
     def converter(vals):
         return numpy.array(vals, numpy_type)
     return converter, converter_type
@@ -708,7 +719,7 @@ class BaseOutputter(object):
                     raise ValueError()
                 if issubclass(converter_type, col.type):
                     converters_out.append((converter_func, converter_type))
-                    
+
         except (ValueError, TypeError):
             raise ValueError('Error: invalid format for converters, see documentation\n%s' %
                              converters)
@@ -755,10 +766,10 @@ class NumpyOutputter(BaseOutputter):
     ===========  ==============  ===========  ============
 
     To set these values use::
-    
+
       Outputter = asciitable.NumpyOutputter()
       Outputter.default_masked = True
-    
+
     """
 
     auto_masked_array = True
@@ -801,7 +812,7 @@ class BaseReader(object):
         self.data = BaseData()
         self.inputter = BaseInputter()
         self.outputter = BaseOutputter()
-        self.meta = {}                  # Placeholder for storing table metadata 
+        self.meta = {}                  # Placeholder for storing table metadata
         self.keywords = []              # Placeholder for storing table Keywords
         # Data and Header instances benefit from a little cross-coupling.  Header may need to
         # know about number of data columns for auto-column name generation and Data may
@@ -833,7 +844,7 @@ class BaseReader(object):
         except TypeError:
             # Not a string.
             pass
-            
+
         # Same from __init__.  ??? Do these need to be here?
         self.data.header = self.header
         self.header.data = self.data
@@ -846,13 +857,13 @@ class BaseReader(object):
         self.data.splitter.cols = cols
 
         for i, str_vals in enumerate(self.data.get_str_vals()):
-            if len(str_vals) != n_data_cols:                
+            if len(str_vals) != n_data_cols:
                 str_vals = self.inconsistent_handler(str_vals, n_data_cols)
-                
+
                 #if str_vals is None, we skip this row
                 if str_vals is None:
                     continue
-                
+
                 #otherwise, we raise an error only if it is still inconsistent
                 if len(str_vals) != n_data_cols:
                     errmsg = ('Number of header columns (%d) inconsistent with '
@@ -870,19 +881,19 @@ class BaseReader(object):
         self.cols = self.header.cols
 
         return self.table
-    
+
     def inconsistent_handler(self, str_vals, ncols):
         """Adjust or skip data entries if a row is inconsistent with the header.
-        
+
         The default implementation does no adjustment, and hence will always trigger
-        an exception in read() any time the number of data entries does not match 
+        an exception in read() any time the number of data entries does not match
         the header.
-        
+
         Note that this will *not* be called if the row already matches the header.
 
         :param str_vals: A list of value strings from the current row of the table.
         :param ncols: The expected number of entries from the table header.
-        :returns: 
+        :returns:
             list of strings to be parsed into data entries in the output table. If
             the length of this list does not match ``ncols``, an exception will be
             raised in read().  Can also be None, in which case the row will be
@@ -917,7 +928,7 @@ class BaseReader(object):
         self.data.cols = self.header.cols
         self.data.masks(self.data.cols)
 
-        # Write header and data to lines list 
+        # Write header and data to lines list
         lines = []
         self.header.write(lines)
         self.data.write(lines)
@@ -961,7 +972,7 @@ class WhitespaceSplitter(DefaultSplitter):
         in_quote = False
         lastchar = None
         for char in line:
-            if char == self.quotechar and (self.escapechar is None or 
+            if char == self.quotechar and (self.escapechar is None or
                                            lastchar != self.escapechar):
                 in_quote = not in_quote
             if char == '\t' and not in_quote:
@@ -971,7 +982,7 @@ class WhitespaceSplitter(DefaultSplitter):
 
         return ''.join(newline)
 
-extra_reader_pars = ('Reader', 'Inputter', 'Outputter', 
+extra_reader_pars = ('Reader', 'Inputter', 'Outputter',
                      'delimiter', 'comment', 'quotechar', 'header_start',
                      'data_start', 'data_end', 'converters',
                      'data_Splitter', 'header_Splitter',
@@ -1033,7 +1044,7 @@ def _get_reader(Reader, Inputter=None, Outputter=None, numpy=True, **kwargs):
     return reader
 
 extra_writer_pars = ('delimiter', 'comment', 'quotechar', 'formats',
-                     'names', 'include_names', 'exclude_names', 
+                     'names', 'include_names', 'exclude_names',
                      'fill_values', 'fill_include_names',
                      'fill_exclude_names')
 
@@ -1069,5 +1080,3 @@ def _get_writer(Writer, **kwargs):
     if 'fill_exclude_names' in kwargs:
         writer.data.fill_exclude_names = kwargs['fill_exclude_names']
     return writer
-
-    
