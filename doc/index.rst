@@ -1,6 +1,7 @@
 .. |read| replace:: :func:`~asciitable.read`
 .. |write| replace:: :func:`~asciitable.write`
 .. _structured array: http://docs.scipy.org/doc/numpy/user/basics.rec.html
+.. _astropy.io.ascii: http://docs.astropy.org/en/latest/io/ascii/index.html
 
 Asciitable
 ======================
@@ -29,6 +30,17 @@ modular and extensible class structure.  The basic functionality required for
 reading or writing a table is largely broken into independent `base class
 elements`_ so that new formats can be accomodated by modifying the underlying
 class methods as needed.
+
+.. Warning:: This package is no longer being developed.
+
+   The asciitable package has been moved into the `Astropy project
+   <http://astropy.org>`_ and is now known as `astropy.io.ascii`_.  This new version is very
+   compatible with asciitable and most existing code should work.
+
+   The `astropy.io.ascii`_ package is being actively developed and contains many new features and
+   bug fixes relative to asciitable.  Users are strongly encouraged to migrate to
+   `astropy.io.ascii`_.  If you have any questions or problems please send mail to the AstroPy
+   mailing list (astropy@scipy.org).
 
 :Copyright: Smithsonian Astrophysical Observatory (2011) 
 :Author: Tom Aldcroft (aldcroft@head.cfa.harvard.edu)
